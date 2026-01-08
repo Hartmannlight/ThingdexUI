@@ -1,0 +1,26 @@
+﻿services:
+  thingdex-ui:
+    build:
+      context: .
+    ports:
+      - "${THINGDEX_WEB_PORT:-5173}:80"
+    environment:
+      THINGDEX_API_BASE_URL: "/api"
+      THINGDEX_API_UPSTREAM: "http://host.docker.internal:8000"
+      THINGDEX_LABEL_SERVICE_BASE_URL: "/ext/label"
+      THINGDEX_PRINTER_HUB_BASE_URL: "/ext/printhub"
+      THINGDEX_LABEL_SERVICE_UPSTREAM: "http://label.xn--jahnstrae-n1a.de/api/v1"
+      THINGDEX_PRINTER_HUB_UPSTREAM: "http://printhub.xn--jahnstrae-n1a.de/v1"
+      THINGDEX_ROOT_LOCATION_ID: ""
+      THINGDEX_DEFAULT_INCLUDE_DESCENDANTS: "true"
+      THINGDEX_FEATURE_INVENTORY: "true"
+      THINGDEX_FEATURE_ITEM_TYPES: "true"
+      THINGDEX_FEATURE_CREATE_ITEMS: "true"
+      THINGDEX_FEATURE_MOVE: "true"
+      THINGDEX_FEATURE_SEARCH: "true"
+      THINGDEX_FEATURE_SNAPSHOTS: "false"
+      THINGDEX_FEATURE_AUDIO: "true"
+      THINGDEX_FEATURE_LABEL_PRINTING: "true"
+      THINGDEX_AUDIO_ENABLED: "true"
+      THINGDEX_AUDIO_VOLUME: "0.2"
+    restart: unless-stopped

@@ -1,0 +1,27 @@
+﻿:root {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: #1f2328;
+  background-color: #f4f1ea;
+  --bg: #f4f1ea;
+  --bg-alt: #fbf7f1;
+  --panel: #ffffff;
+  --text: #1f2328;
+  --muted: #5b5f67;
+  --border: #e4ddd2;
+  --accent: #176f73;
+  --accent-strong: #0f4e52;
+  --accent-warm: #d9772c;
+  --success: #1e8c4a;
+  --warning: #d78529;
+  --error: #c23a2b;
+  --info: #2b6ea6;
+  --shadow: 0 16px 40px rgba(18, 20, 22, 0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 40px;
+}
