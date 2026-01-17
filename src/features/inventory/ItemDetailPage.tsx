@@ -298,7 +298,7 @@ const ItemDetailPage = () => {
                 <option value="">Select printer</option>
                 {printersQuery.data?.map((printer) => (
                   <option key={printer.id} value={printer.id}>
-                    {printer.id} {printer.name ? `- ${printer.name}` : ""}
+                    {printer.name ?? printer.id}
                   </option>
                 ))}
               </Select>

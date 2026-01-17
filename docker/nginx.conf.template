@@ -19,14 +19,14 @@ http {
 
     location /ext/label/ {
       proxy_pass ${THINGDEX_LABEL_SERVICE_UPSTREAM}/;
-      proxy_set_header Host $host;
+      proxy_set_header Host $proxy_host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     location /ext/printhub/ {
       proxy_pass ${THINGDEX_PRINTER_HUB_UPSTREAM}/;
-      proxy_set_header Host $host;
+      proxy_set_header Host $proxy_host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }

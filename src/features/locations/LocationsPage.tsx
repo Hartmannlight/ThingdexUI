@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -7,7 +7,7 @@ import { Select } from "@/components/Select";
 import { StatusBanner } from "@/components/StatusBanner";
 import { createLocation, getLocation, getPath, listChildren } from "@/api/locations";
 import { listPrinters } from "@/api/printers";
-import { listLabelTemplates } from "@/api/labels";
+import { getLabelTemplate, isValidLocationTemplate, listLabelTemplates } from "@/api/labels";
 import { parseErrorMessage } from "@/api/errors";
 import { useToasts } from "@/hooks/useToasts";
 import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
@@ -23,6 +23,7 @@ const LocationsPage = () => {
   const [labelPrintEnabled, setLabelPrintEnabled] = useState(false);
   const [printerId, setPrinterId] = useState("");
   const [labelTemplateId, setLabelTemplateId] = useState("");
+  const [filterValidTemplates, setFilterValidTemplates] = useState(true);
   const [includeDeleted, setIncludeDeleted] = useState(false);
 
   useEffect(() => {
@@ -61,8 +62,92 @@ const LocationsPage = () => {
     enabled: featureFlags.labelPrinting
   });
 
+  const templateIds = useMemo(() => (templatesQuery.data ?? []).map((template) => template.id), [templatesQuery.data]);
+
+  const templateValidityQuery = useQuery({
+    queryKey: ["label-templates", "validity", templateIds],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        templateIds.map(async (templateId) => {
+          try {
+            const detail = await getLabelTemplate(templateId);
+            return { id: templateId, detail };
+          } catch {
+            return { id: templateId, detail: null };
+          }
+        })
+      );
+      return entries;
+    },
+    enabled: featureFlags.labelPrinting && filterValidTemplates && templateIds.length > 0
+  });
+
+  const templateDetailQuery = useQuery({
+    queryKey: ["label-template", labelTemplateId],
+    queryFn: () => getLabelTemplate(labelTemplateId),
+    enabled: featureFlags.labelPrinting && !!labelTemplateId
+  });
+
+  const templateVariables = templateDetailQuery.data?.variables ?? [];
+  const invalidVariableNames = useMemo(
+    () =>
+      templateVariables
+        .map((variable) => variable?.name)
+        .filter((name): name is string => typeof name === "string" && name.includes("-")),
+    [templateVariables]
+  );
+  const requiredVariables = useMemo(
+    () =>
+      templateVariables
+        .filter((variable) => variable?.mode === "required")
+        .map((variable) => variable?.name)
+        .filter((name): name is string => typeof name === "string"),
+    [templateVariables]
+  );
+  const missingRequiredVariables = useMemo(() => {
+    const required = new Set(requiredVariables);
+    return ["location_uuid", "container_name"].filter((name) => !required.has(name));
+  }, [requiredVariables]);
+  const hasTemplateIssues = !isValidLocationTemplate(templateDetailQuery.data);
+
+  const validTemplateIds = useMemo(() => {
+    const entries = templateValidityQuery.data ?? [];
+    return new Set(entries.filter((entry) => isValidLocationTemplate(entry.detail)).map((entry) => entry.id));
+  }, [templateValidityQuery.data]);
+
+  const templateOptions = useMemo(() => {
+    const templates = templatesQuery.data ?? [];
+    if (!filterValidTemplates) return templates;
+    return templates.filter((template) => validTemplateIds.has(template.id));
+  }, [templatesQuery.data, filterValidTemplates, validTemplateIds]);
+
+  useEffect(() => {
+    if (filterValidTemplates && labelTemplateId && templateValidityQuery.data && !validTemplateIds.has(labelTemplateId)) {
+      setLabelTemplateId("");
+    }
+  }, [filterValidTemplates, labelTemplateId, templateValidityQuery.data, validTemplateIds]);
+
   const create = async () => {
     try {
+      if (labelPrintEnabled && !labelTemplateId.trim()) {
+        toastError("Missing template", "Select a label template for this location.");
+        return;
+      }
+      if (labelTemplateId.trim() && templateDetailQuery.isLoading) {
+        toastError("Template loading", "Wait for the label template to finish loading.");
+        return;
+      }
+      if (labelTemplateId.trim() && templateDetailQuery.isError) {
+        toastError("Template not found", "The selected label template could not be loaded.");
+        return;
+      }
+      if (labelTemplateId.trim() && hasTemplateIssues) {
+        toastError(
+          "Template invalid",
+          "Label templates for locations must use location_uuid and container_name and cannot include '-' in variables."
+        );
+        return;
+      }
       if (labelPrintEnabled && !printerId.trim()) {
         toastError("Missing printer", "Select a printer to print the container label.");
         return;
@@ -71,7 +156,12 @@ const LocationsPage = () => {
         name: name.trim(),
         parent_id: parentId || null,
         meta: labelTemplateId.trim() ? { label_template_id: labelTemplateId.trim() } : null,
-        label_print: labelPrintEnabled ? { printer_id: printerId.trim() } : null
+        label_print: labelPrintEnabled
+          ? {
+              printer_id: printerId.trim(),
+              template_id: labelTemplateId.trim() || null
+            }
+          : null
       });
       toastSuccess("Location created", response.name);
       setName("");
@@ -86,7 +176,13 @@ const LocationsPage = () => {
 
   const currentPath = pathQuery.data ?? [];
   const currentName = currentPath.length > 0 ? currentPath[currentPath.length - 1].name : "";
-  const canCreate = name.trim().length > 0 && !!parentId;
+  const canCreate =
+    name.trim().length > 0 &&
+    !!parentId &&
+    !(labelTemplateId.trim() && filterValidTemplates && templateValidityQuery.isLoading) &&
+    !(labelTemplateId.trim() && templateDetailQuery.isLoading) &&
+    !(labelTemplateId.trim() && templateDetailQuery.isError) &&
+    !(labelTemplateId.trim() && hasTemplateIssues);
   const currentLocation = currentLocationQuery.data;
 
   return (
@@ -115,14 +211,46 @@ const LocationsPage = () => {
                   value={labelTemplateId}
                   onChange={(event) => setLabelTemplateId(event.target.value)}
                   help="Pick the label template stored on this location for future reprints."
+                  disabled={filterValidTemplates && templateValidityQuery.isLoading}
                 >
                   <option value="">Label template (optional)</option>
-                  {templatesQuery.data?.map((template) => (
+                  {templateOptions.map((template) => (
                     <option key={template.id} value={template.id}>
                       {template.id} {template.name ? `- ${template.name}` : ""}
                     </option>
                   ))}
                 </Select>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={filterValidTemplates}
+                    onChange={(event) => setFilterValidTemplates(event.target.checked)}
+                  />
+                  <span>Only valid templates</span>
+                </label>
+                {filterValidTemplates && templateValidityQuery.isLoading && (
+                  <StatusBanner kind="info" title="Checking templates" message="Validating label templates..." />
+                )}
+                {templateDetailQuery.isError && (
+                  <StatusBanner kind="error" title="Template not found" message="Selected template could not be loaded." />
+                )}
+                {labelTemplateId.trim() && !templateDetailQuery.isLoading && !templateDetailQuery.isError && hasTemplateIssues && (
+                  <StatusBanner
+                    kind="warning"
+                    title="Template variables invalid"
+                    message={[
+                      missingRequiredVariables.length > 0
+                        ? `Missing required variables: ${missingRequiredVariables.join(", ")}.`
+                        : null,
+                      invalidVariableNames.length > 0
+                        ? `Invalid variable names: ${invalidVariableNames.join(", ")}.`
+                        : null,
+                      "Location templates must use location_uuid and container_name (no '-' in names)."
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  />
+                )}
                 {templatesQuery.isError && (
                   <StatusBanner kind="error" title="Templates failed" message={parseErrorMessage(templatesQuery.error)} />
                 )}
@@ -145,7 +273,7 @@ const LocationsPage = () => {
                       <option value="">Select printer</option>
                       {printersQuery.data?.map((printer) => (
                         <option key={printer.id} value={printer.id}>
-                          {printer.id} {printer.name ? `- ${printer.name}` : ""}
+                          {printer.name ?? printer.id}
                         </option>
                       ))}
                     </Select>

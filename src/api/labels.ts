@@ -17,6 +17,21 @@ export type LabelTemplateDetail = {
   variables?: LabelTemplateVariable[] | null;
 };
 
+export const isValidLocationTemplate = (template?: LabelTemplateDetail | null) => {
+  if (!template || !Array.isArray(template.variables) || template.variables.length === 0) return false;
+  const names = template.variables
+    .map((variable) => variable?.name)
+    .filter((name): name is string => typeof name === "string");
+  if (names.some((name) => name.includes("-"))) return false;
+  const required = new Set(
+    template.variables
+      .filter((variable) => variable?.mode === "required")
+      .map((variable) => variable?.name)
+      .filter((name): name is string => typeof name === "string")
+  );
+  return required.has("location_uuid") && required.has("container_name");
+};
+
 export const listLabelTemplates = async () => {
   const { labelServiceBaseUrl } = getRuntimeConfig();
   const data = await externalRequest<unknown>(labelServiceBaseUrl, "/templates");

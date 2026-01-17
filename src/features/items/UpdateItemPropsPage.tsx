@@ -92,7 +92,7 @@ const UpdateItemPropsPage = () => {
   };
 
   const onPropsEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       void submit();
     }
@@ -145,7 +145,7 @@ const UpdateItemPropsPage = () => {
             ref={propsRef}
           />
           {propsError && <StatusBanner kind="error" title="Props error" message={propsError} />}
-          <div className="muted">Press Ctrl+Enter to submit when focused in JSON.</div>
+          <div className="muted">Press Enter to submit; Shift+Enter adds a newline.</div>
           <Button size="lg" onClick={submit} disabled={submitting}>
             {submitting ? "Updating..." : "Update Props"}
           </Button>

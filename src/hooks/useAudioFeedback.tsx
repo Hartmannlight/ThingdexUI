@@ -1,4 +1,4 @@
-﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { getRuntimeConfig } from "@/config/runtime";
 
@@ -21,21 +21,13 @@ const toneMap: Record<AudioTone, { freq: number; duration: number }> = {
 
 export const AudioFeedbackProvider = ({ children }: { children: ReactNode }) => {
   const { featureFlags, audio } = getRuntimeConfig();
-  const [enabled, setEnabledState] = useState<boolean>(() => {
-    const saved = window.localStorage.getItem("thingdex.audio.enabled");
-    if (saved !== null) return saved === "true";
-    return audio.enabled;
-  });
+  const enabled = featureFlags.audioFeedback;
   const contextRef = useRef<AudioContext | null>(null);
   const volumeRef = useRef<number>(audio.volume);
 
   useEffect(() => {
     volumeRef.current = audio.volume;
   }, [audio.volume]);
-
-  useEffect(() => {
-    window.localStorage.setItem("thingdex.audio.enabled", String(enabled));
-  }, [enabled]);
 
   useEffect(() => {
     const unlock = () => {
@@ -57,9 +49,7 @@ export const AudioFeedbackProvider = ({ children }: { children: ReactNode }) => 
     };
   }, [featureFlags.audioFeedback]);
 
-  const setEnabled = useCallback((next: boolean) => {
-    setEnabledState(next);
-  }, []);
+  const setEnabled = useCallback(() => {}, []);
 
   const play = useCallback(
     (tone: AudioTone) => {

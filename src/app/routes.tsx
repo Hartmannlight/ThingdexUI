@@ -23,6 +23,10 @@ import UpdateRelationPage from "@/features/relations/UpdateRelationPage";
 import LabelReprintPage from "@/features/labels/LabelReprintPage";
 import CreateHubPage from "@/features/hubs/CreateHubPage";
 import EditHubPage from "@/features/hubs/EditHubPage";
+import DeleteItemPage from "@/features/admin/DeleteItemPage";
+import DeleteLocationPage from "@/features/admin/DeleteLocationPage";
+import DeleteRelationPage from "@/features/admin/DeleteRelationPage";
+import DeleteItemTypePage from "@/features/admin/DeleteItemTypePage";
 
 const rootRoute = createRootRoute({
   component: Shell
@@ -52,6 +56,12 @@ const createItemTypeRoute = createRoute({
   component: CreateItemTypePage
 });
 
+const deleteItemTypeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/item-types/delete",
+  component: DeleteItemTypePage
+});
+
 const createItemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/create-items",
@@ -62,6 +72,12 @@ const listItemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/items/list",
   component: ListItemsPage
+});
+
+const deleteItemRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/items/delete",
+  component: DeleteItemPage
 });
 
 const missingLocationRoute = createRoute({
@@ -112,6 +128,24 @@ const moveLocationRoute = createRoute({
   component: MoveLocationPage
 });
 
+const locationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/locations",
+  component: LocationsPage
+});
+
+const updateLocationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/locations/update",
+  component: UpdateLocationPage
+});
+
+const deleteLocationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/locations/delete",
+  component: DeleteLocationPage
+});
+
 const attachRelationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/relations/attach",
@@ -130,22 +164,16 @@ const updateRelationRoute = createRoute({
   component: UpdateRelationPage
 });
 
+const deleteRelationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/relations/delete",
+  component: DeleteRelationPage
+});
+
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
   component: SearchPage
-});
-
-const locationsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/locations",
-  component: LocationsPage
-});
-
-const updateLocationRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/locations/update",
-  component: UpdateLocationPage
 });
 
 const labelReprintRoute = createRoute({
@@ -171,8 +199,10 @@ const routeTree = rootRoute.addChildren([
   itemDetailRoute,
   itemTypesRoute,
   createItemTypeRoute,
+  deleteItemTypeRoute,
   createItemsRoute,
   listItemsRoute,
+  deleteItemRoute,
   missingLocationRoute,
   updateItemRoute,
   updateItemPropsRoute,
@@ -181,12 +211,14 @@ const routeTree = rootRoute.addChildren([
   createSnapshotRoute,
   moveItemRoute,
   moveLocationRoute,
+  locationsRoute,
+  updateLocationRoute,
+  deleteLocationRoute,
   attachRelationRoute,
   detachRelationRoute,
   updateRelationRoute,
+  deleteRelationRoute,
   searchRoute,
-  locationsRoute,
-  updateLocationRoute,
   labelReprintRoute,
   createHubRoute,
   editHubRoute

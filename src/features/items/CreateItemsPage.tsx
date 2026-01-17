@@ -151,6 +151,7 @@ const CreateItemsPage = () => {
     if (!Array.isArray(variables)) return [];
     return variables
       .filter((variable) => variable && typeof variable.name === "string" && variable.mode === "required")
+      .filter((variable) => !variable.name.startsWith("internal_"))
       .map((variable) => variable.name);
   }, [templateQuery.data]);
 
@@ -460,7 +461,7 @@ const CreateItemsPage = () => {
                       <option value="">Select printer</option>
                       {printersQuery.data?.map((printer) => (
                         <option key={printer.id} value={printer.id}>
-                          {printer.id} {printer.name ? `- ${printer.name}` : ""}
+                          {printer.name ?? printer.id}
                         </option>
                       ))}
                     </Select>

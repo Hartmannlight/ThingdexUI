@@ -209,6 +209,7 @@ export type ItemRelationOut = {
 
 export type LabelPrintRequest = {
   printer_id: string;
+  template_id?: string | null;
   return_preview?: boolean | null;
 };
 
@@ -216,6 +217,7 @@ export type LabelReprintRequest = {
   printer_id: string;
   item_id?: string | null;
   location_id?: string | null;
+  template_id?: string | null;
   return_preview?: boolean | null;
 };
 

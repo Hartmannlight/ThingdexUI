@@ -53,30 +53,6 @@ const EditHubPage = () => {
           </Card>
         )}
 
-        {featureFlags.inventory && (
-          <Card>
-            <div className="card__header">
-              <h3>Item History</h3>
-            </div>
-            <div className="muted">Review property history for an item.</div>
-            <Link to="/items/history" className="button button--outline button--sm">
-              Open
-            </Link>
-          </Card>
-        )}
-
-        {featureFlags.inventory && (
-          <Card>
-            <div className="card__header">
-              <h3>Missing Locations</h3>
-            </div>
-            <div className="muted">Find items that have no effective location.</div>
-            <Link to="/items/missing-location" className="button button--outline button--sm">
-              Open
-            </Link>
-          </Card>
-        )}
-
         {featureFlags.snapshots && (
           <Card>
             <div className="card__header">

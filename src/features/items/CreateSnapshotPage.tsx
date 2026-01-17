@@ -100,6 +100,20 @@ const CreateSnapshotPage = () => {
     }
   };
 
+  const onTextEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      jsonRef.current?.focus();
+    }
+  };
+
+  const onJsonEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      void submit();
+    }
+  };
+
   if (!featureFlags.snapshots) {
     return (
       <div className="page">
@@ -138,6 +152,7 @@ const CreateSnapshotPage = () => {
             placeholder="Data text (optional)"
             value={dataText}
             onChange={(event) => setDataText(event.target.value)}
+            onKeyDown={onTextEnter}
             help="Optional raw text to store alongside the snapshot for quick viewing."
             ref={textRef}
           />
@@ -149,6 +164,7 @@ const CreateSnapshotPage = () => {
               setDataJson(event.target.value);
               setJsonError(null);
             }}
+            onKeyDown={onJsonEnter}
             help="Optional JSON object to store structured snapshot data."
             ref={jsonRef}
           />

@@ -148,6 +148,13 @@ const UpdateLocationPage = () => {
     }
   };
 
+  const onMetaEnter = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      void submit();
+    }
+  };
+
   if (!featureFlags.inventory) {
     return (
       <div className="page">
@@ -205,6 +212,7 @@ const UpdateLocationPage = () => {
               setMetaText(event.target.value);
               setMetaError(null);
             }}
+            onKeyDown={onMetaEnter}
             help="Optional JSON metadata for advanced behavior (such as label template settings)."
             ref={metaRef}
           />
