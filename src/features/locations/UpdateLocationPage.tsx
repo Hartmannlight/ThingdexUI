@@ -5,7 +5,7 @@ import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { StatusBanner } from "@/components/StatusBanner";
 import { Textarea } from "@/components/Textarea";
-import { updateLocation } from "@/api/locations";
+import { deleteLocation, updateLocation } from "@/api/locations";
 import { parseErrorMessage } from "@/api/errors";
 import { getRuntimeConfig } from "@/config/runtime";
 import { useToasts } from "@/hooks/useToasts";
@@ -20,6 +20,7 @@ const UpdateLocationPage = () => {
   const [metaText, setMetaText] = useState("");
   const [metaError, setMetaError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [status, setStatus] = useState<{ kind: "success" | "warning" | "error" | "info"; title: string; message?: string } | null>(null);
 
   const locationRef = useRef<HTMLInputElement | null>(null);
@@ -87,6 +88,35 @@ const UpdateLocationPage = () => {
       setStatus({ kind: "error", title: "Update failed", message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!locationId.trim()) {
+      error("Missing location", "Scan or enter location UUID.");
+      locationRef.current?.focus();
+      return;
+    }
+    const confirmed = window.confirm("Delete this location? It will be hidden unless include_deleted is enabled.");
+    if (!confirmed) return;
+    setDeleting(true);
+    setStatus(null);
+    try {
+      await deleteLocation(locationId.trim());
+      success("Location deleted", locationId.trim());
+      setStatus({ kind: "success", title: "Deleted", message: "Location deleted." });
+      setLocationId("");
+      setName("");
+      setParentId("");
+      setKind("");
+      setMetaText("");
+      locationRef.current?.focus();
+    } catch (err) {
+      const message = parseErrorMessage(err);
+      error("Delete failed", message);
+      setStatus({ kind: "error", title: "Delete failed", message });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -179,9 +209,14 @@ const UpdateLocationPage = () => {
             ref={metaRef}
           />
           {metaError && <StatusBanner kind="error" title="Meta error" message={metaError} />}
-          <Button size="lg" onClick={submit} disabled={submitting}>
-            {submitting ? "Updating..." : "Update Location"}
-          </Button>
+          <div className="builder__actions">
+            <Button size="lg" onClick={submit} disabled={submitting || deleting}>
+              {submitting ? "Updating..." : "Update Location"}
+            </Button>
+            <Button variant="danger" size="lg" onClick={handleDelete} disabled={submitting || deleting}>
+              {deleting ? "Deleting..." : "Delete Location"}
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

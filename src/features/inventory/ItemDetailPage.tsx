@@ -7,14 +7,17 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Input } from "@/components/Input";
 import { Select } from "@/components/Select";
 import { Button } from "@/components/Button";
-import { getItem } from "@/api/items";
+import { deleteItem, getItem } from "@/api/items";
 import {
   createRelation,
+  deleteRelation,
   detachRelation,
   listChildRelations,
   listParentRelations,
   updateRelation
 } from "@/api/relations";
+import { listPrinters } from "@/api/printers";
+import { printLabel } from "@/api/labelPrint";
 import { getRuntimeConfig } from "@/config/runtime";
 import { parseErrorMessage } from "@/api/errors";
 import { useToasts } from "@/hooks/useToasts";
@@ -25,29 +28,7 @@ const ItemDetailPage = () => {
   const params = useParams({ from: "/items/$itemId" });
   const { featureFlags } = getRuntimeConfig();
   const { success, error } = useToasts();
-
-  const itemQuery = useQuery({
-    queryKey: ["item", params.itemId],
-    queryFn: () => getItem(params.itemId)
-  });
-
-  const childRelationsQuery = useQuery({
-    queryKey: ["item", params.itemId, "relations", "children"],
-    queryFn: () => listChildRelations(params.itemId),
-    enabled: featureFlags.inventory
-  });
-
-  const parentRelationsQuery = useQuery({
-    queryKey: ["item", params.itemId, "relations", "parents"],
-    queryFn: () => listParentRelations(params.itemId),
-    enabled: featureFlags.inventory
-  });
-
-  const item = itemQuery.data;
-  const propsEntries = item?.props ? Object.entries(item.props) : [];
-  const effectivePath = item?.location?.effective_location_path ?? [];
-  const effectiveLocationName =
-    effectivePath.length > 0 ? effectivePath[effectivePath.length - 1].name : item?.location?.effective_location_id ?? "-";
+  const [deleting, setDeleting] = useState(false);
 
   const [childItemId, setChildItemId] = useState("");
   const [relationType, setRelationType] = useState<(typeof relationTypes)[number]>("installed_in");
@@ -57,6 +38,38 @@ const ItemDetailPage = () => {
 
   const [relationId, setRelationId] = useState("");
   const [detachLocationId, setDetachLocationId] = useState("");
+  const [printerId, setPrinterId] = useState("");
+  const [printStatus, setPrintStatus] = useState<{ kind: "success" | "warning" | "error" | "info"; title: string; message?: string } | null>(null);
+  const [includeDeletedRelations, setIncludeDeletedRelations] = useState(false);
+
+  const itemQuery = useQuery({
+    queryKey: ["item", params.itemId],
+    queryFn: () => getItem(params.itemId)
+  });
+
+  const childRelationsQuery = useQuery({
+    queryKey: ["item", params.itemId, "relations", "children", includeDeletedRelations],
+    queryFn: () => listChildRelations(params.itemId, { include_deleted: includeDeletedRelations }),
+    enabled: featureFlags.inventory
+  });
+
+  const parentRelationsQuery = useQuery({
+    queryKey: ["item", params.itemId, "relations", "parents", includeDeletedRelations],
+    queryFn: () => listParentRelations(params.itemId, { include_deleted: includeDeletedRelations }),
+    enabled: featureFlags.inventory
+  });
+
+  const printersQuery = useQuery({
+    queryKey: ["printers"],
+    queryFn: () => listPrinters(),
+    enabled: featureFlags.labelPrinting
+  });
+
+  const item = itemQuery.data;
+  const propsEntries = item?.props ? Object.entries(item.props) : [];
+  const effectivePath = item?.location?.effective_location_path ?? [];
+  const effectiveLocationName =
+    effectivePath.length > 0 ? effectivePath[effectivePath.length - 1].name : item?.location?.effective_location_id ?? "-";
 
   const attachRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
   const detachRefs = useRef<Record<string, HTMLInputElement | HTMLSelectElement | null>>({});
@@ -152,6 +165,56 @@ const ItemDetailPage = () => {
     }
   };
 
+  const removeRelation = async (relationIdValue: string) => {
+    const confirmed = window.confirm("Delete this relation? It will be hidden unless include_deleted is enabled.");
+    if (!confirmed) return;
+    try {
+      await deleteRelation(relationIdValue);
+      success("Relation deleted", relationIdValue);
+      childRelationsQuery.refetch();
+      parentRelationsQuery.refetch();
+    } catch (err) {
+      error("Delete failed", parseErrorMessage(err));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deleting) return;
+    const confirmed = window.confirm("Delete this item? It will be hidden unless include_deleted is enabled.");
+    if (!confirmed) return;
+    setDeleting(true);
+    try {
+      await deleteItem(params.itemId);
+      success("Item deleted", params.itemId);
+      window.location.assign("/items/list");
+    } catch (err) {
+      error("Delete failed", parseErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const submitPrint = async () => {
+    if (!printerId.trim()) {
+      error("Missing printer", "Select a printer to print the item label.");
+      return;
+    }
+    setPrintStatus(null);
+    try {
+      await printLabel({
+        printer_id: printerId.trim(),
+        item_id: params.itemId,
+        location_id: null
+      });
+      success("Print queued", params.itemId);
+      setPrintStatus({ kind: "success", title: "Print queued", message: printerId.trim() });
+    } catch (err) {
+      const message = parseErrorMessage(err);
+      error("Print failed", message);
+      setPrintStatus({ kind: "error", title: "Print failed", message });
+    }
+  };
+
   if (!featureFlags.inventory) {
     return (
       <div className="page">
@@ -173,9 +236,14 @@ const ItemDetailPage = () => {
               <h2>{item?.type?.name ?? "Item"}</h2>
               {item?.id && <div className="muted">{item.id}</div>}
             </div>
-            <Link to="/move" className="button button--outline button--sm">
-              Move Item
-            </Link>
+            <div className="builder__actions">
+              <Link to="/move" className="button button--outline button--sm">
+                Move Item
+              </Link>
+              <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting || !item?.id}>
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
           </div>
           <div className="detail-meta">
             <div className="detail-meta__row">
@@ -215,6 +283,35 @@ const ItemDetailPage = () => {
             </div>
           )}
         </Card>
+
+        {featureFlags.labelPrinting && (
+          <Card className="detail-card">
+            <div className="card__header">
+              <h3>Print Label</h3>
+            </div>
+            <div className="form-stack">
+              <Select
+                value={printerId}
+                onChange={(event) => setPrinterId(event.target.value)}
+                help="Choose the printer that will receive the label print job."
+              >
+                <option value="">Select printer</option>
+                {printersQuery.data?.map((printer) => (
+                  <option key={printer.id} value={printer.id}>
+                    {printer.id} {printer.name ? `- ${printer.name}` : ""}
+                  </option>
+                ))}
+              </Select>
+              {printersQuery.isError && (
+                <StatusBanner kind="error" title="Printers failed" message={parseErrorMessage(printersQuery.error)} />
+              )}
+              <Button onClick={submitPrint} disabled={!item?.id}>
+                Print Label
+              </Button>
+              {printStatus && <StatusBanner kind={printStatus.kind} title={printStatus.title} message={printStatus.message} />}
+            </div>
+          </Card>
+        )}
 
         <Card className="detail-card">
           <div className="card__header">
@@ -349,6 +446,14 @@ const ItemDetailPage = () => {
         <Card className="detail-card">
           <div className="card__header">
             <h3>Contained Items</h3>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeDeletedRelations}
+                onChange={(event) => setIncludeDeletedRelations(event.target.checked)}
+              />
+              <span>Include deleted</span>
+            </label>
           </div>
           {childRelationsQuery.isLoading && <div className="empty">Loading relations...</div>}
           {childRelationsQuery.data?.length === 0 && <div className="empty">No contained items.</div>}
@@ -369,6 +474,9 @@ const ItemDetailPage = () => {
                     }}>
                       Detach
                     </button>
+                    <button className="link-button" onClick={() => removeRelation(relation.id)}>
+                      Delete
+                    </button>
                     <button className="link-button" onClick={() => toggleActive(relation.id, relation.active)}>
                       {relation.active ? "Deactivate" : "Activate"}
                     </button>
@@ -382,6 +490,14 @@ const ItemDetailPage = () => {
         <Card className="detail-card">
           <div className="card__header">
             <h3>Parent Relations</h3>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeDeletedRelations}
+                onChange={(event) => setIncludeDeletedRelations(event.target.checked)}
+              />
+              <span>Include deleted</span>
+            </label>
           </div>
           {parentRelationsQuery.isLoading && <div className="empty">Loading relations...</div>}
           {parentRelationsQuery.data?.length === 0 && <div className="empty">No parent relations.</div>}
@@ -396,6 +512,9 @@ const ItemDetailPage = () => {
                   </div>
                   <div className="relation-row">
                     <span className="relation-row__badge">{relation.active ? "Active" : "Inactive"}</span>
+                    <button className="link-button" onClick={() => removeRelation(relation.id)}>
+                      Delete
+                    </button>
                     <button className="link-button" onClick={() => toggleActive(relation.id, relation.active)}>
                       {relation.active ? "Deactivate" : "Activate"}
                     </button>

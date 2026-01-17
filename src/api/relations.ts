@@ -7,10 +7,10 @@ export const createRelation = (parentItemId: string, payload: ItemRelationCreate
     body: JSON.stringify(payload)
   });
 
-export const listChildRelations = (itemId: string, params?: { active_only?: boolean }) =>
+export const listChildRelations = (itemId: string, params?: { active_only?: boolean | null; include_deleted?: boolean | null }) =>
   apiRequest<ItemRelationOut[]>(`/v1/items/${itemId}/relations/children`, {}, params ?? undefined);
 
-export const listParentRelations = (itemId: string, params?: { active_only?: boolean }) =>
+export const listParentRelations = (itemId: string, params?: { active_only?: boolean | null; include_deleted?: boolean | null }) =>
   apiRequest<ItemRelationOut[]>(`/v1/items/${itemId}/relations/parents`, {}, params ?? undefined);
 
 export const updateRelation = (relationId: string, payload: ItemRelationUpdate) =>
@@ -23,4 +23,9 @@ export const detachRelation = (relationId: string, payload: ItemRelationDetach) 
   apiRequest<ItemRelationOut>(`/v1/relations/${relationId}/detach`, {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+
+export const deleteRelation = (relationId: string) =>
+  apiRequest<void>(`/v1/relations/${relationId}`, {
+    method: "DELETE"
   });

@@ -7,12 +7,14 @@ import { StatusBanner } from "@/components/StatusBanner";
 import { getItemHistory } from "@/api/items";
 import { parseErrorMessage } from "@/api/errors";
 import { getRuntimeConfig } from "@/config/runtime";
+import { formatTimestamp } from "@/utils/dates";
 
 const ItemHistoryPage = () => {
   const { featureFlags } = getRuntimeConfig();
   const [itemId, setItemId] = useState("");
   const [propKey, setPropKey] = useState("");
   const [limit, setLimit] = useState("200");
+  const [includeDeleted, setIncludeDeleted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<
     Array<{ id: string; prop_key: string; captured_at: string; value: unknown; source?: string | null }>
@@ -38,7 +40,8 @@ const ItemHistoryPage = () => {
     try {
       const response = await getItemHistory(itemId.trim(), {
         prop_key: propKey.trim() || null,
-        limit: limit.trim() ? Number(limit) : null
+        limit: limit.trim() ? Number(limit) : null,
+        include_deleted: includeDeleted
       });
       setResults(response);
       setStatus({ kind: "success", title: "History loaded", message: `${response.length} entries` });
@@ -111,6 +114,14 @@ const ItemHistoryPage = () => {
               help="Set how many entries to fetch; smaller numbers load faster."
               ref={limitRef}
             />
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeDeleted}
+                onChange={(event) => setIncludeDeleted(event.target.checked)}
+              />
+              <span>Include deleted</span>
+            </label>
             <Button size="lg" onClick={load} disabled={loading}>
               {loading ? "Loading..." : "Load History"}
             </Button>
@@ -128,7 +139,7 @@ const ItemHistoryPage = () => {
               <div key={entry.id} className="list__row">
                 <div>
                   <div className="list__title">{entry.prop_key}</div>
-                  <div className="muted">{entry.captured_at}</div>
+                  <div className="muted">{formatTimestamp(entry.captured_at)}</div>
                 </div>
                 <div className="muted">{JSON.stringify(entry.value)}</div>
               </div>

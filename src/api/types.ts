@@ -28,6 +28,15 @@ export type LocationPathItem = {
   name: string;
 };
 
+export type LocationTreeNode = {
+  id: string;
+  name: string;
+  parent_id?: string | null;
+  kind?: string | null;
+  meta?: JsonRecord | null;
+  children: LocationTreeNode[];
+};
+
 export type ItemTypeCreate = {
   name: string;
   schema?: JsonRecord | null;
@@ -58,6 +67,36 @@ export type ItemCreate = {
   type?: string | null;
   type_id?: string | null;
   label_print?: LabelPrintRequest | null;
+};
+
+export type ItemBulkCreateItem = {
+  location_id?: string | null;
+  status?: string | null;
+  description?: string | null;
+  props?: JsonRecord | null;
+  type?: string | null;
+  type_id?: string | null;
+};
+
+export type ItemBulkCreate = {
+  items: ItemBulkCreateItem[];
+};
+
+export type ItemBulkUpdateItem = {
+  id: string;
+  status?: string | null;
+  description?: string | null;
+  props?: JsonRecord | null;
+  source?: string | null;
+};
+
+export type ItemBulkUpdate = {
+  items: ItemBulkUpdateItem[];
+};
+
+export type ItemBulkMove = {
+  item_ids: string[];
+  location_id: string;
 };
 
 export type ItemUpdate = {
@@ -150,7 +189,10 @@ export type ItemRelationDetach = {
 };
 
 export type ItemRelationUpdate = {
-  active: boolean;
+  active?: boolean | null;
+  quantity?: number | null;
+  slot?: string | null;
+  notes?: string | null;
 };
 
 export type ItemRelationOut = {

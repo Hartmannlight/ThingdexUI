@@ -6,17 +6,18 @@ import { Input } from "@/components/Input";
 import { Select } from "@/components/Select";
 import { StatusBanner } from "@/components/StatusBanner";
 import { Textarea } from "@/components/Textarea";
-import { listItemTypes, updateItemType } from "@/api/itemTypes";
+import { deleteItemType, listItemTypes, updateItemType } from "@/api/itemTypes";
 import { listLabelTemplates } from "@/api/labels";
 import { getRuntimeConfig } from "@/config/runtime";
 import { parseErrorMessage } from "@/api/errors";
 
 const ItemTypesPage = () => {
   const { featureFlags } = getRuntimeConfig();
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   const itemTypesQuery = useQuery({
-    queryKey: ["item-types"],
-    queryFn: () => listItemTypes(),
+    queryKey: ["item-types", includeDeleted],
+    queryFn: () => listItemTypes({ include_deleted: includeDeleted }),
     enabled: featureFlags.itemTypes
   });
 
@@ -32,6 +33,7 @@ const ItemTypesPage = () => {
   const [schemaText, setSchemaText] = useState("");
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editStatus, setEditStatus] = useState<{ kind: "error" | "warning" | "success" | "info"; title: string; message?: string } | null>(
     null
   );
@@ -96,6 +98,30 @@ const ItemTypesPage = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedId) {
+      setEditStatus({ kind: "warning", title: "Select a type", message: "Choose an item type to delete." });
+      return;
+    }
+    const confirmed = window.confirm("Delete this item type? It will be hidden unless include_deleted is enabled.");
+    if (!confirmed) return;
+    setDeleting(true);
+    setEditStatus(null);
+    try {
+      await deleteItemType(selectedId);
+      setEditStatus({ kind: "success", title: "Deleted", message: "Item type deleted." });
+      setSelectedId("");
+      setEditName("");
+      setEditTemplateId("");
+      setSchemaText("");
+      itemTypesQuery.refetch();
+    } catch (err) {
+      setEditStatus({ kind: "error", title: "Delete failed", message: parseErrorMessage(err) });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!featureFlags.itemTypes) {
     return (
       <div className="page">
@@ -111,6 +137,14 @@ const ItemTypesPage = () => {
           <div className="card__header">
             <h3>Item Type Editor</h3>
           </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(event) => setIncludeDeleted(event.target.checked)}
+            />
+            <span>Include deleted</span>
+          </label>
           <div className="muted">Select a type to edit its schema and label template.</div>
           {itemTypesQuery.isLoading && <div className="empty">Loading types...</div>}
           {itemTypesQuery.isError && (
@@ -193,9 +227,14 @@ const ItemTypesPage = () => {
             {templatesQuery.isError && (
               <StatusBanner kind="error" title="Templates failed" message={parseErrorMessage(templatesQuery.error)} />
             )}
-            <Button size="lg" onClick={submitUpdate} disabled={updating}>
-              {updating ? "Saving..." : "Save Changes"}
-            </Button>
+            <div className="builder__actions">
+              <Button size="lg" onClick={submitUpdate} disabled={updating || deleting}>
+                {updating ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button variant="danger" size="lg" onClick={handleDelete} disabled={updating || deleting || !selectedId}>
+                {deleting ? "Deleting..." : "Delete Type"}
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

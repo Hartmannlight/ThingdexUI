@@ -6,6 +6,7 @@ import ItemTypesPage from "@/features/itemTypes/ItemTypesPage";
 import CreateItemTypePage from "@/features/itemTypes/CreateItemTypePage";
 import CreateItemsPage from "@/features/items/CreateItemsPage";
 import ListItemsPage from "@/features/items/ListItemsPage";
+import MissingLocationPage from "@/features/items/MissingLocationPage";
 import UpdateItemPage from "@/features/items/UpdateItemPage";
 import UpdateItemPropsPage from "@/features/items/UpdateItemPropsPage";
 import CreateSnapshotPage from "@/features/items/CreateSnapshotPage";
@@ -61,6 +62,12 @@ const listItemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/items/list",
   component: ListItemsPage
+});
+
+const missingLocationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/items/missing-location",
+  component: MissingLocationPage
 });
 
 const updateItemRoute = createRoute({
@@ -166,6 +173,7 @@ const routeTree = rootRoute.addChildren([
   createItemTypeRoute,
   createItemsRoute,
   listItemsRoute,
+  missingLocationRoute,
   updateItemRoute,
   updateItemPropsRoute,
   itemHistoryRoute,

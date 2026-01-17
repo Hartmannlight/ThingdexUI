@@ -94,6 +94,11 @@ const Shell = () => {
               Search + UUID Lookup
             </Link>
           )}
+          {featureFlags.inventory && (
+            <Link to="/items/missing-location" className={navClass}>
+              Missing Location
+            </Link>
+          )}
         </div>
 
         <div className="nav-group">

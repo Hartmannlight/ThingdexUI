@@ -18,6 +18,7 @@ const InventoryPage = () => {
   const rootLocationId = useBootstrapRootLocation();
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [includeDescendants, setIncludeDescendants] = useState(config.defaults.includeDescendants);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   useEffect(() => {
     if (rootLocationId) {
@@ -38,14 +39,14 @@ const InventoryPage = () => {
   });
 
   const itemsQuery = useQuery({
-    queryKey: ["location", selectedLocationId, "items", includeDescendants],
-    queryFn: () => listItemsInLocation(selectedLocationId, includeDescendants),
+    queryKey: ["location", selectedLocationId, "items", includeDescendants, includeDeleted],
+    queryFn: () => listItemsInLocation(selectedLocationId, includeDescendants, { include_deleted: includeDeleted }),
     enabled: !!selectedLocationId
   });
 
   const itemTypesQuery = useQuery({
-    queryKey: ["item-types"],
-    queryFn: () => listItemTypes(),
+    queryKey: ["item-types", includeDeleted],
+    queryFn: () => listItemTypes({ include_deleted: includeDeleted }),
     enabled: featureFlags.inventory
   });
 
@@ -91,6 +92,7 @@ const InventoryPage = () => {
             rootId={rootLocationId}
             selectedId={selectedLocationId}
             onSelect={(id) => setSelectedLocationId(id)}
+            includeDeleted={includeDeleted}
           />
         </Card>
 
@@ -100,15 +102,25 @@ const InventoryPage = () => {
               <h3>{locationName}</h3>
               {pathQuery.data && <Breadcrumbs path={pathQuery.data} />}
             </div>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={includeDescendants}
-                onChange={(event) => setIncludeDescendants(event.target.checked)}
-              />
-              <span>Include descendants</span>
-              <HelpIcon text="Also include items stored in nested child locations under the selected node." />
-            </label>
+            <div className="toggle-row">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={includeDescendants}
+                  onChange={(event) => setIncludeDescendants(event.target.checked)}
+                />
+                <span>Include descendants</span>
+                <HelpIcon text="Also include items stored in nested child locations under the selected node." />
+              </label>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={includeDeleted}
+                  onChange={(event) => setIncludeDeleted(event.target.checked)}
+                />
+                <span>Include deleted</span>
+              </label>
+            </div>
           </div>
           {selectedLocationId && <div className="muted">Location ID: {selectedLocationId}</div>}
           <div className="inventory__summary">{itemCount} items</div>

@@ -23,6 +23,7 @@ const LocationsPage = () => {
   const [labelPrintEnabled, setLabelPrintEnabled] = useState(false);
   const [printerId, setPrinterId] = useState("");
   const [labelTemplateId, setLabelTemplateId] = useState("");
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   useEffect(() => {
     if (rootLocationId && !parentId) {
@@ -31,8 +32,8 @@ const LocationsPage = () => {
   }, [rootLocationId, parentId]);
 
   const childrenQuery = useQuery({
-    queryKey: ["location", parentId, "children"],
-    queryFn: () => listChildren(parentId),
+    queryKey: ["location", parentId, "children", includeDeleted],
+    queryFn: () => listChildren(parentId, { include_deleted: includeDeleted }),
     enabled: !!parentId
   });
 
@@ -167,6 +168,14 @@ const LocationsPage = () => {
           </div>
           {parentId && <div className="muted">Current location ID: {parentId}</div>}
           {currentLocation?.name && <div className="muted">Name: {currentLocation.name}</div>}
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(event) => setIncludeDeleted(event.target.checked)}
+            />
+            <span>Include deleted</span>
+          </label>
           {pathQuery.data && (
             <div className="breadcrumbs breadcrumbs--inline">
               {pathQuery.data.map((node, index) => (

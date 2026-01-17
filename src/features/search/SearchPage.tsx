@@ -50,6 +50,7 @@ const SearchPage = () => {
   const [type, setType] = useState("");
   const [locationId, setLocationId] = useState(rootLocationId ?? "");
   const [includeDescendants, setIncludeDescendants] = useState(true);
+  const [includeDeletedTypes, setIncludeDeletedTypes] = useState(false);
   const [inUse, setInUse] = useState("");
   const [filters, setFilters] = useState<FilterRow[]>([{ path: "", op: "==", value: "" }]);
   const [results, setResults] = useState<Array<{ id: string; status?: string | null; type_id: string }>>([]);
@@ -67,8 +68,8 @@ const SearchPage = () => {
   }, [rootLocationId]);
 
   const itemTypesQuery = useQuery({
-    queryKey: ["item-types"],
-    queryFn: () => listItemTypes(),
+    queryKey: ["item-types", includeDeletedTypes],
+    queryFn: () => listItemTypes({ include_deleted: includeDeletedTypes }),
     enabled: featureFlags.search
   });
 
@@ -270,6 +271,15 @@ const SearchPage = () => {
                 </option>
               ))}
             </Select>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeDeletedTypes}
+                onChange={(event) => setIncludeDeletedTypes(event.target.checked)}
+              />
+              <span>Include deleted types</span>
+              <HelpIcon text="Show item types that have been soft-deleted." />
+            </label>
             <div className="detail-meta">
               <div className="detail-meta__row">
                 <span className="detail-meta__label">Root location</span>

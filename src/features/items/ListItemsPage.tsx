@@ -17,6 +17,7 @@ const ListItemsPage = () => {
   const [typeName, setTypeName] = useState("");
   const [statusValue, setStatusValue] = useState("");
   const [inUse, setInUse] = useState("");
+  const [includeDeleted, setIncludeDeleted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Array<{ id: string; type_id: string; status?: string | null }>>([]);
   const [pageStatus, setPageStatus] = useState<{ kind: "error" | "warning" | "success" | "info"; title: string; message?: string } | null>(null);
@@ -26,8 +27,8 @@ const ListItemsPage = () => {
   const inUseRef = useRef<HTMLSelectElement | null>(null);
 
   const itemTypesQuery = useQuery({
-    queryKey: ["item-types"],
-    queryFn: () => listItemTypes(),
+    queryKey: ["item-types", includeDeleted],
+    queryFn: () => listItemTypes({ include_deleted: includeDeleted }),
     enabled: featureFlags.inventory
   });
 
@@ -46,7 +47,8 @@ const ListItemsPage = () => {
       const response = await listItems({
         type: typeName.trim() || null,
         status: statusValue.trim() || null,
-        in_use: inUse === "" ? null : inUse === "true"
+        in_use: inUse === "" ? null : inUse === "true",
+        include_deleted: includeDeleted
       });
       setResults(response.map((item) => ({ id: item.id, type_id: item.type_id, status: item.status })));
       setPageStatus({ kind: "success", title: "Items loaded", message: `${response.length} items` });
@@ -127,6 +129,14 @@ const ListItemsPage = () => {
               <option value="true">In use</option>
               <option value="false">Stored</option>
             </Select>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeDeleted}
+                onChange={(event) => setIncludeDeleted(event.target.checked)}
+              />
+              <span>Include deleted</span>
+            </label>
             <Button size="lg" onClick={run} disabled={loading}>
               {loading ? "Loading..." : "Load Items"}
             </Button>

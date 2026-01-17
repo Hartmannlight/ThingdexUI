@@ -20,10 +20,11 @@ const CreateItemsPage = () => {
   const { featureFlags } = getRuntimeConfig();
   const { success, error } = useToasts();
   const rootLocationId = useBootstrapRootLocation();
+  const [includeDeletedTypes, setIncludeDeletedTypes] = useState(false);
 
   const itemTypesQuery = useQuery({
-    queryKey: ["item-types"],
-    queryFn: () => listItemTypes(),
+    queryKey: ["item-types", includeDeletedTypes],
+    queryFn: () => listItemTypes({ include_deleted: includeDeletedTypes }),
     enabled: featureFlags.createItems
   });
 
@@ -312,13 +313,22 @@ const CreateItemsPage = () => {
                 inputRefs.current.type_id = node;
               }}
             >
-              <option value="">Select item type</option>
-              {(itemTypesQuery.data ?? []).map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
+                <option value="">Select item type</option>
+                {(itemTypesQuery.data ?? []).map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
             </Select>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeDeletedTypes}
+                onChange={(event) => setIncludeDeletedTypes(event.target.checked)}
+              />
+              <span>Include deleted types</span>
+              <HelpIcon text="Show item types that have been soft-deleted." />
+            </label>
 
             <label className="toggle">
               <input
