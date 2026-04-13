@@ -1,5 +1,4 @@
-import { getRuntimeConfig } from "@/config/runtime";
-import { externalRequest } from "@/api/external";
+import { getPrinthubSdk } from "@/api/client";
 
 export type PrinterSummary = {
   id: string;
@@ -7,13 +6,9 @@ export type PrinterSummary = {
 };
 
 export const listPrinters = async () => {
-  const { printerHubBaseUrl } = getRuntimeConfig();
-  const data = await externalRequest<unknown>(printerHubBaseUrl, "/printers");
-  if (Array.isArray(data)) return data as PrinterSummary[];
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-    const items = record.printers ?? record.data ?? record.results;
-    if (Array.isArray(items)) return items as PrinterSummary[];
-  }
-  return [];
+  const data = await getPrinthubSdk().printers.list();
+  return (data.printers ?? []).map((printer) => ({
+    id: String(printer.id),
+    name: typeof printer.name === "string" ? printer.name : null
+  })) as PrinterSummary[];
 };

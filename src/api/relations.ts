@@ -1,31 +1,19 @@
-﻿import { apiRequest } from "@/api/client";
+import { getThingdexSdk } from "@/api/client";
 import type { ItemRelationCreate, ItemRelationDetach, ItemRelationOut, ItemRelationUpdate } from "@/api/types";
 
 export const createRelation = (parentItemId: string, payload: ItemRelationCreate) =>
-  apiRequest<ItemRelationOut>(`/v1/items/${parentItemId}/relations`, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().relations.create(parentItemId, payload) as Promise<ItemRelationOut>;
 
 export const listChildRelations = (itemId: string, params?: { active_only?: boolean | null; include_deleted?: boolean | null }) =>
-  apiRequest<ItemRelationOut[]>(`/v1/items/${itemId}/relations/children`, {}, params ?? undefined);
+  getThingdexSdk().relations.listChildren(itemId, params) as Promise<ItemRelationOut[]>;
 
 export const listParentRelations = (itemId: string, params?: { active_only?: boolean | null; include_deleted?: boolean | null }) =>
-  apiRequest<ItemRelationOut[]>(`/v1/items/${itemId}/relations/parents`, {}, params ?? undefined);
+  getThingdexSdk().relations.listParents(itemId, params) as Promise<ItemRelationOut[]>;
 
 export const updateRelation = (relationId: string, payload: ItemRelationUpdate) =>
-  apiRequest<ItemRelationOut>(`/v1/relations/${relationId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().relations.update(relationId, payload) as Promise<ItemRelationOut>;
 
 export const detachRelation = (relationId: string, payload: ItemRelationDetach) =>
-  apiRequest<ItemRelationOut>(`/v1/relations/${relationId}/detach`, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().relations.detach(relationId, payload) as Promise<ItemRelationOut>;
 
-export const deleteRelation = (relationId: string) =>
-  apiRequest<void>(`/v1/relations/${relationId}`, {
-    method: "DELETE"
-  });
+export const deleteRelation = (relationId: string) => getThingdexSdk().relations.delete(relationId);

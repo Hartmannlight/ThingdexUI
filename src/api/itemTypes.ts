@@ -1,25 +1,14 @@
-﻿import { apiRequest } from "@/api/client";
+import { getThingdexSdk } from "@/api/client";
 import type { ItemTypeCreate, ItemTypeOut, ItemTypeUpdate } from "@/api/types";
 
 export const listItemTypes = (params?: { limit?: number | null; offset?: number | null; include_deleted?: boolean | null }) =>
-  apiRequest<ItemTypeOut[]>("/v1/item-types", {}, params ?? undefined);
+  getThingdexSdk().itemTypes.list(params) as Promise<ItemTypeOut[]>;
 
-export const getItemType = (itemTypeId: string) =>
-  apiRequest<ItemTypeOut>(`/v1/item-types/${itemTypeId}`);
+export const getItemType = (itemTypeId: string) => getThingdexSdk().itemTypes.get(itemTypeId) as Promise<ItemTypeOut>;
 
-export const createItemType = (payload: ItemTypeCreate) =>
-  apiRequest<ItemTypeOut>("/v1/item-types", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+export const createItemType = (payload: ItemTypeCreate) => getThingdexSdk().itemTypes.create(payload) as Promise<ItemTypeOut>;
 
 export const updateItemType = (itemTypeId: string, payload: ItemTypeUpdate) =>
-  apiRequest<ItemTypeOut>(`/v1/item-types/${itemTypeId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().itemTypes.update(itemTypeId, payload) as Promise<ItemTypeOut>;
 
-export const deleteItemType = (itemTypeId: string) =>
-  apiRequest<void>(`/v1/item-types/${itemTypeId}`, {
-    method: "DELETE"
-  });
+export const deleteItemType = (itemTypeId: string) => getThingdexSdk().itemTypes.delete(itemTypeId);

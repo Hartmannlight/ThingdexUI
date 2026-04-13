@@ -1,4 +1,4 @@
-﻿import { apiRequest } from "@/api/client";
+import { getThingdexSdk } from "@/api/client";
 import type {
   ItemCreate,
   ItemDetailOut,
@@ -23,90 +23,45 @@ export const listItems = (filters?: {
   limit?: number | null;
   offset?: number | null;
   include_deleted?: boolean | null;
-}) => apiRequest<ItemOut[]>("/v1/items", {}, filters ?? undefined);
+}) => getThingdexSdk().items.list(filters) as Promise<ItemOut[]>;
 
-export const getItem = (itemId: string) => apiRequest<ItemDetailOut>(`/v1/items/${itemId}`);
+export const getItem = (itemId: string) => getThingdexSdk().items.get(itemId) as Promise<ItemDetailOut>;
 
-export const createItem = (payload: ItemCreate) =>
-  apiRequest<ItemOut>("/v1/items", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+export const createItem = (payload: ItemCreate) => getThingdexSdk().items.create(payload) as Promise<ItemOut>;
 
-export const deleteItem = (itemId: string) =>
-  apiRequest<void>(`/v1/items/${itemId}`, {
-    method: "DELETE"
-  });
+export const deleteItem = (itemId: string) => getThingdexSdk().items.delete(itemId);
 
-export const bulkCreateItems = (payload: ItemBulkCreate) =>
-  apiRequest<ItemOut[]>("/v1/items/bulk", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+export const bulkCreateItems = (payload: ItemBulkCreate) => getThingdexSdk().items.bulkCreate(payload) as Promise<ItemOut[]>;
 
-export const bulkUpdateItems = (payload: ItemBulkUpdate) =>
-  apiRequest<ItemOut[]>("/v1/items/bulk", {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+export const bulkUpdateItems = (payload: ItemBulkUpdate) => getThingdexSdk().items.bulkUpdate(payload) as Promise<ItemOut[]>;
 
-export const bulkMoveItems = (payload: ItemBulkMove) =>
-  apiRequest<ItemOut[]>("/v1/items/bulk/move", {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+export const bulkMoveItems = (payload: ItemBulkMove) => getThingdexSdk().items.bulkMove(payload) as Promise<ItemOut[]>;
 
-export const updateItem = (itemId: string, payload: ItemUpdate) =>
-  apiRequest<ItemOut>(`/v1/items/${itemId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+export const updateItem = (itemId: string, payload: ItemUpdate) => getThingdexSdk().items.update(itemId, payload) as Promise<ItemOut>;
 
-export const moveItem = (itemId: string, payload: ItemMove) =>
-  apiRequest<ItemOut>(`/v1/items/${itemId}/move`, {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+export const moveItem = (itemId: string, payload: ItemMove) => getThingdexSdk().items.move(itemId, payload) as Promise<ItemOut>;
 
 export const mergeItemProps = (itemId: string, payload: ItemPropsUpdate) =>
-  apiRequest<ItemOut>(`/v1/items/${itemId}/props`, {
-    method: "PATCH",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().items.mergeProps(itemId, payload) as Promise<ItemOut>;
 
 export const replaceItemProps = (itemId: string, payload: ItemPropsReplace) =>
-  apiRequest<ItemOut>(`/v1/items/${itemId}/props`, {
-    method: "PUT",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().items.replaceProps(itemId, payload) as Promise<ItemOut>;
 
 export const getItemHistory = (
   itemId: string,
   params?: { prop_key?: string | null; limit?: number | null; offset?: number | null; include_deleted?: boolean | null }
-) =>
-  apiRequest<ItemPropHistoryOut[]>(`/v1/items/${itemId}/history`, {}, params ?? undefined);
+) => getThingdexSdk().items.history(itemId, params) as Promise<ItemPropHistoryOut[]>;
 
 export const listItemSnapshots = (
   itemId: string,
   params?: { kind?: string | null; limit?: number | null; offset?: number | null; include_deleted?: boolean | null }
-) =>
-  apiRequest<ItemSnapshotOut[]>(`/v1/items/${itemId}/snapshots`, {}, params ?? undefined);
+) => getThingdexSdk().items.listSnapshots(itemId, params) as Promise<ItemSnapshotOut[]>;
 
 export const createItemSnapshot = (itemId: string, payload: ItemSnapshotCreate) =>
-  apiRequest<ItemSnapshotOut>(`/v1/items/${itemId}/snapshots`, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  getThingdexSdk().items.createSnapshot(itemId, payload) as Promise<ItemSnapshotOut>;
 
-export const deleteItemSnapshot = (itemId: string, snapshotId: string) =>
-  apiRequest<void>(`/v1/items/${itemId}/snapshots/${snapshotId}`, {
-    method: "DELETE"
-  });
+export const deleteItemSnapshot = (itemId: string, snapshotId: string) => getThingdexSdk().items.deleteSnapshot(itemId, snapshotId);
 
-export const searchItems = (payload: SearchRequest) =>
-  apiRequest<ItemOut[]>("/v1/items/search", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+export const searchItems = (payload: SearchRequest) => getThingdexSdk().items.search(payload) as Promise<ItemOut[]>;
 
-export const listItemsMissingLocation = () => apiRequest<ItemDetailOut[]>("/v1/items/missing-location");
+export const listItemsMissingLocation = () => getThingdexSdk().items.listMissingLocation() as Promise<ItemDetailOut[]>;

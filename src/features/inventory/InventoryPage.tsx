@@ -66,7 +66,9 @@ const InventoryPage = () => {
     if (locationQuery.isError)
       return { kind: "error", title: "Location failed", message: parseErrorMessage(locationQuery.error) };
     return null;
-  }, [itemsQuery.error, itemsQuery.isError, locationQuery.error, locationQuery.isError]);
+  }, [itemsQuery.error, itemsQuery.isError, locationQuery.error, locationQuery.isError]) as
+    | { kind: "success" | "warning" | "error" | "info"; title: string; message?: string }
+    | null;
 
   const typeNameMap = useMemo(() => {
     return new Map((itemTypesQuery.data ?? []).map((type) => [type.id, type.name]));

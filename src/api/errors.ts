@@ -1,4 +1,7 @@
-﻿export class ApiError extends Error {
+import { PrinthubApiError } from "@printhub/sdk";
+import { ThingdexApiError } from "@thingdex/sdk";
+
+export class ApiError extends Error {
   status: number;
   detail?: unknown;
 
@@ -13,7 +16,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 
 export const parseErrorMessage = (error: unknown) => {
-  if (error instanceof ApiError) {
+  if (error instanceof ApiError || error instanceof ThingdexApiError || error instanceof PrinthubApiError) {
     if (isRecord(error.detail) && Array.isArray(error.detail.detail)) {
       const items = error.detail.detail
         .map((entry) => {

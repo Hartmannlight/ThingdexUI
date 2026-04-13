@@ -1,61 +1,40 @@
-﻿import { getRuntimeConfig } from "@/config/runtime";
-import { ApiError } from "@/api/errors";
+import { createPrinthubSdk } from "@printhub/sdk";
+import { createThingdexSdk } from "@thingdex/sdk";
 
-const buildQuery = (params?: Record<string, unknown>) => {
-  if (!params) return "";
-  const parts: string[] = [];
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return;
-    parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-  });
-  return parts.length > 0 ? `?${parts.join("&")}` : "";
-};
+import { getRuntimeConfig } from "@/config/runtime";
 
 const REQUEST_TIMEOUT_MS = 15000;
 
-export const apiRequest = async <T>(
-  path: string,
-  options: RequestInit = {},
-  query?: Record<string, unknown>
-): Promise<T> => {
+let thingdexCache: ReturnType<typeof createThingdexSdk> | null = null;
+let thingdexCacheBaseUrl = "";
+let printhubCache: ReturnType<typeof createPrinthubSdk> | null = null;
+let printhubCacheBaseUrl = "";
+let labelServiceCache: ReturnType<typeof createPrinthubSdk> | null = null;
+let labelServiceCacheBaseUrl = "";
+
+export const getThingdexSdk = () => {
   const { apiBaseUrl } = getRuntimeConfig();
-  const url = `${apiBaseUrl}${path}${buildQuery(query)}`;
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
-      },
-      signal: controller.signal,
-      ...options
-    });
-  } catch (error) {
-    if (controller.signal.aborted) {
-      throw new ApiError(0, "Request timed out");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeoutId);
+  if (!thingdexCache || thingdexCacheBaseUrl !== apiBaseUrl) {
+    thingdexCacheBaseUrl = apiBaseUrl;
+    thingdexCache = createThingdexSdk({ baseUrl: apiBaseUrl, timeoutMs: REQUEST_TIMEOUT_MS });
   }
+  return thingdexCache;
+};
 
-  const text = await response.text();
-  let data: unknown = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
+export const getPrinthubSdk = () => {
+  const { printerHubBaseUrl } = getRuntimeConfig();
+  if (!printhubCache || printhubCacheBaseUrl !== printerHubBaseUrl) {
+    printhubCacheBaseUrl = printerHubBaseUrl;
+    printhubCache = createPrinthubSdk({ baseUrl: printerHubBaseUrl, timeoutMs: REQUEST_TIMEOUT_MS });
   }
+  return printhubCache;
+};
 
-  if (!response.ok) {
-    const message = typeof data === "object" && data && "detail" in data ? "Request failed" : response.statusText;
-    throw new ApiError(response.status, message || "Request failed", data ?? undefined);
+export const getLabelServiceSdk = () => {
+  const { labelServiceBaseUrl } = getRuntimeConfig();
+  if (!labelServiceCache || labelServiceCacheBaseUrl !== labelServiceBaseUrl) {
+    labelServiceCacheBaseUrl = labelServiceBaseUrl;
+    labelServiceCache = createPrinthubSdk({ baseUrl: labelServiceBaseUrl, timeoutMs: REQUEST_TIMEOUT_MS });
   }
-
-  return data as T;
+  return labelServiceCache;
 };

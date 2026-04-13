@@ -1,13 +1,18 @@
+import type { ReactNode } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
 import { getRuntimeConfig } from "@/config/runtime";
 import { Toasts } from "@/components/Toasts";
 import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
 
+const NavItem = ({ to, children }: { to: string; children: ReactNode }) => (
+  <Link to={to} className="nav__link" activeProps={{ className: "nav__link is-active" }}>
+    {children}
+  </Link>
+);
+
 const Shell = () => {
   const { featureFlags } = getRuntimeConfig();
   useBootstrapRootLocation();
-
-  const navClass = ({ isActive }: { isActive: boolean }) => (isActive ? "nav__link is-active" : "nav__link");
 
   return (
     <div className="app">
@@ -15,130 +20,56 @@ const Shell = () => {
         {featureFlags.inventory && (
           <div className="nav-group">
             <div className="nav-group__title">Overview</div>
-            <Link to="/" className={navClass}>
-              Inventory Overview
-            </Link>
+            <NavItem to="/">Inventory Overview</NavItem>
           </div>
         )}
 
         <div className="nav-group">
           <div className="nav-group__title">Daily Ops</div>
-          {featureFlags.createItems && (
-            <Link to="/create-items" className={navClass}>
-              Create Items
-            </Link>
-          )}
-          {featureFlags.moveWorkflow && (
-            <Link to="/move" className={navClass}>
-              Move Item
-            </Link>
-          )}
-          {featureFlags.search && (
-            <Link to="/search" className={navClass}>
-              Search Items
-            </Link>
-          )}
+          {featureFlags.createItems && <NavItem to="/create-items">Create Items</NavItem>}
+          {featureFlags.moveWorkflow && <NavItem to="/move">Move Item</NavItem>}
+          {featureFlags.search && <NavItem to="/search">Search Items</NavItem>}
         </div>
 
         {featureFlags.inventory && (
           <div className="nav-group">
             <div className="nav-group__title">Locations</div>
-            <Link to="/locations" className={navClass}>
-              Create + Browse
-            </Link>
-            <Link to="/locations/move" className={navClass}>
-              Move Location
-            </Link>
+            <NavItem to="/locations">Create + Browse</NavItem>
+            <NavItem to="/locations/move">Move Location</NavItem>
           </div>
         )}
 
         {featureFlags.inventory && (
           <div className="nav-group">
             <div className="nav-group__title">Relations</div>
-            <Link to="/relations/attach" className={navClass}>
-              Attach Item
-            </Link>
-            <Link to="/relations/detach" className={navClass}>
-              Detach Relation
-            </Link>
-            <Link to="/relations/update" className={navClass}>
-              Update Relation
-            </Link>
+            <NavItem to="/relations/attach">Attach Item</NavItem>
+            <NavItem to="/relations/detach">Detach Relation</NavItem>
+            <NavItem to="/relations/update">Update Relation</NavItem>
           </div>
         )}
 
         {featureFlags.labelPrinting && (
           <div className="nav-group">
             <div className="nav-group__title">Labels</div>
-            <Link to="/labels/reprint" className={navClass}>
-              Reprint Label
-            </Link>
+            <NavItem to="/labels/reprint">Reprint Label</NavItem>
           </div>
         )}
 
         {(featureFlags.itemTypes || featureFlags.inventory || featureFlags.snapshots) && (
           <div className="nav-group">
             <div className="nav-group__title">Tools</div>
-            {featureFlags.inventory && (
-              <Link to="/items/update" className={navClass}>
-                Update Item
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/props" className={navClass}>
-                Update Item Props
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/history" className={navClass}>
-                Item History
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/missing-location" className={navClass}>
-                Missing Locations
-              </Link>
-            )}
-            {featureFlags.snapshots && (
-              <Link to="/items/snapshots/list" className={navClass}>
-                Item Snapshots
-              </Link>
-            )}
-            {featureFlags.snapshots && (
-              <Link to="/items/snapshots" className={navClass}>
-                Create Snapshot
-              </Link>
-            )}
-            {featureFlags.itemTypes && (
-              <Link to="/item-types/create" className={navClass}>
-                Create Item Type
-              </Link>
-            )}
-            {featureFlags.itemTypes && (
-              <Link to="/item-types" className={navClass}>
-                Item Type Editor
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/delete" className={navClass}>
-                Delete Item
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/locations/delete" className={navClass}>
-                Delete Location
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/relations/delete" className={navClass}>
-                Delete Relation
-              </Link>
-            )}
-            {featureFlags.itemTypes && (
-              <Link to="/item-types/delete" className={navClass}>
-                Delete Item Type
-              </Link>
-            )}
+            {featureFlags.inventory && <NavItem to="/items/update">Update Item</NavItem>}
+            {featureFlags.inventory && <NavItem to="/items/props">Update Item Props</NavItem>}
+            {featureFlags.inventory && <NavItem to="/items/history">Item History</NavItem>}
+            {featureFlags.inventory && <NavItem to="/items/missing-location">Missing Locations</NavItem>}
+            {featureFlags.snapshots && <NavItem to="/items/snapshots/list">Item Snapshots</NavItem>}
+            {featureFlags.snapshots && <NavItem to="/items/snapshots">Create Snapshot</NavItem>}
+            {featureFlags.itemTypes && <NavItem to="/item-types/create">Create Item Type</NavItem>}
+            {featureFlags.itemTypes && <NavItem to="/item-types">Item Type Editor</NavItem>}
+            {featureFlags.inventory && <NavItem to="/items/delete">Delete Item</NavItem>}
+            {featureFlags.inventory && <NavItem to="/locations/delete">Delete Location</NavItem>}
+            {featureFlags.inventory && <NavItem to="/relations/delete">Delete Relation</NavItem>}
+            {featureFlags.itemTypes && <NavItem to="/item-types/delete">Delete Item Type</NavItem>}
           </div>
         )}
       </aside>

@@ -1,23 +1,34 @@
-﻿FROM node:20-alpine AS build
+FROM node:20-alpine AS build
 
-WORKDIR /app
+WORKDIR /workspace
 
-COPY package.json ./
+COPY thingdex-sdk ./thingdex-sdk
+COPY printhub-sdk ./printhub-sdk
+COPY ThingdexUI ./ThingdexUI
+
+WORKDIR /workspace/thingdex-sdk
 RUN npm install
+RUN npm run build
 
-COPY . .
+WORKDIR /workspace/printhub-sdk
+RUN npm install
+RUN npm run build
+
+WORKDIR /workspace/ThingdexUI
+RUN npm install
 RUN npm run build
 
 FROM nginx:1.25-alpine
 
 RUN apk add --no-cache gettext
 
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY docker/nginx.conf.template /etc/nginx/nginx.conf.template
-COPY public/config.template.js /usr/share/nginx/html/config.template.js
-COPY docker/entrypoint.sh /entrypoint.sh
+COPY --from=build /workspace/ThingdexUI/dist /usr/share/nginx/html
+COPY --from=build /workspace/ThingdexUI/docker/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY --from=build /workspace/ThingdexUI/public/config.template.js /usr/share/nginx/html/config.template.js
+COPY --from=build /workspace/ThingdexUI/docker/entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh \
+    && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

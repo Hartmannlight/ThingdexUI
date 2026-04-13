@@ -1,10 +1,8 @@
-import { getRuntimeConfig } from "@/config/runtime";
-import { externalRequest } from "@/api/external";
+import type { TemplateDetailResponse, TemplateListItem } from "@printhub/sdk";
 
-export type LabelTemplateSummary = {
-  id: string;
-  name?: string | null;
-};
+import { getLabelServiceSdk } from "@/api/client";
+
+export type LabelTemplateSummary = Pick<TemplateListItem, "id" | "name">;
 
 export type LabelTemplateVariable = {
   name: string;
@@ -33,18 +31,27 @@ export const isValidLocationTemplate = (template?: LabelTemplateDetail | null) =
 };
 
 export const listLabelTemplates = async () => {
-  const { labelServiceBaseUrl } = getRuntimeConfig();
-  const data = await externalRequest<unknown>(labelServiceBaseUrl, "/templates");
-  if (Array.isArray(data)) return data as LabelTemplateSummary[];
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-    const items = record.templates ?? record.data ?? record.results;
-    if (Array.isArray(items)) return items as LabelTemplateSummary[];
-  }
-  return [];
+  const items = await getLabelServiceSdk().templates.list();
+  return items.map((item) => ({ id: item.id, name: item.name ?? null }));
 };
 
-export const getLabelTemplate = async (templateId: string) => {
-  const { labelServiceBaseUrl } = getRuntimeConfig();
-  return externalRequest<LabelTemplateDetail>(labelServiceBaseUrl, `/templates/${templateId}`);
+export const getLabelTemplate = async (templateId: string): Promise<LabelTemplateDetail> => {
+  const detail = await getLabelServiceSdk().templates.get(templateId);
+  const variables = Array.isArray(detail.variables)
+    ? detail.variables
+        .map((variable) => {
+          if (!variable || typeof variable !== "object") return null;
+          const record = variable as Record<string, unknown>;
+          return {
+            name: typeof record.name === "string" ? record.name : "",
+            mode: typeof record.mode === "string" ? record.mode : null
+          };
+        })
+        .filter((variable) => Boolean(variable?.name))
+    : null;
+  return {
+    id: detail.id,
+    name: detail.name ?? null,
+    variables: variables as LabelTemplateVariable[] | null
+  };
 };
