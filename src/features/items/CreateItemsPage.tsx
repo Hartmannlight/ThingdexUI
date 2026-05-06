@@ -17,7 +17,7 @@ import { useToasts } from "@/hooks/useToasts";
 import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
 
 const CreateItemsPage = () => {
-  const { featureFlags } = getRuntimeConfig();
+  const { defaults, featureFlags } = getRuntimeConfig();
   const { success, error } = useToasts();
   const rootLocationId = useBootstrapRootLocation();
   const [includeDeletedTypes, setIncludeDeletedTypes] = useState(false);
@@ -40,7 +40,7 @@ const CreateItemsPage = () => {
   const [prefill, setPrefill] = useState<Record<string, string | boolean>>({});
   const [autoAdvance, setAutoAdvance] = useState<Record<string, boolean>>({});
   const [labelPrintEnabled, setLabelPrintEnabled] = useState(false);
-  const [printerId, setPrinterId] = useState("");
+  const [printerId, setPrinterId] = useState(defaults.defaultPrinterId);
 
   const selectedType = itemTypesQuery.data?.find((item) => item.id === typeId);
   const labelTemplateId = selectedType?.label_template_id ?? "";
@@ -88,8 +88,8 @@ const CreateItemsPage = () => {
     setAutoAdvance({});
     setPrefill({});
     setLabelPrintEnabled(false);
-    setPrinterId("");
-  }, [typeId]);
+    setPrinterId(defaults.defaultPrinterId);
+  }, [typeId, defaults.defaultPrinterId]);
 
   useEffect(() => {
     if (!locationId && rootLocationId && hasPhysicalLocation) {

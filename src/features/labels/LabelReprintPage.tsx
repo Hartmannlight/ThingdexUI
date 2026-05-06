@@ -16,10 +16,10 @@ import { useToasts } from "@/hooks/useToasts";
 type TargetKind = "item" | "location";
 
 const LabelReprintPage = () => {
-  const { featureFlags } = getRuntimeConfig();
+  const { defaults, featureFlags } = getRuntimeConfig();
   const { success, error } = useToasts();
   const [targetKind, setTargetKind] = useState<TargetKind>("item");
-  const [printerId, setPrinterId] = useState("");
+  const [printerId, setPrinterId] = useState(defaults.defaultPrinterId);
   const [targetId, setTargetId] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [filterValidTemplates, setFilterValidTemplates] = useState(true);

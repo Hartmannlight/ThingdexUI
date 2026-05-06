@@ -4,7 +4,8 @@ window.__THINGDEX_CONFIG__ = {
   printerHubBaseUrl: "${THINGDEX_PRINTER_HUB_BASE_URL}",
   rootLocationId: "${THINGDEX_ROOT_LOCATION_ID}",
   defaults: {
-    includeDescendants: "${THINGDEX_DEFAULT_INCLUDE_DESCENDANTS}"
+    includeDescendants: "${THINGDEX_DEFAULT_INCLUDE_DESCENDANTS}",
+    defaultPrinterId: "${THINGDEX_DEFAULT_PRINTER_ID}"
   },
   featureFlags: {
     inventory: "${THINGDEX_FEATURE_INVENTORY}",

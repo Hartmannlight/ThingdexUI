@@ -16,6 +16,7 @@ export type AppConfig = {
   rootLocationId: string | null;
   defaults: {
     includeDescendants: boolean;
+    defaultPrinterId: string;
   };
   featureFlags: FeatureFlags;
   audio: {
@@ -68,7 +69,8 @@ const buildConfig = (): AppConfig => {
     printerHubBaseUrl: import.meta.env.VITE_PRINTER_HUB_BASE_URL ?? "/ext/printhub",
     rootLocationId: import.meta.env.VITE_ROOT_LOCATION_ID ?? localRoot,
     defaults: {
-      includeDescendants: readBool(import.meta.env.VITE_DEFAULT_INCLUDE_DESCENDANTS, true)
+      includeDescendants: readBool(import.meta.env.VITE_DEFAULT_INCLUDE_DESCENDANTS, true),
+      defaultPrinterId: import.meta.env.VITE_DEFAULT_PRINTER_ID ?? ""
     },
     featureFlags: {
       inventory: readBool(import.meta.env.VITE_FEATURE_INVENTORY, true),
@@ -92,7 +94,8 @@ const buildConfig = (): AppConfig => {
     printerHubBaseUrl: readString(runtime?.printerHubBaseUrl, defaultConfig.printerHubBaseUrl),
     rootLocationId: readString(runtime?.rootLocationId, defaultConfig.rootLocationId ?? "") || null,
     defaults: {
-      includeDescendants: readBool(runtime?.defaults?.includeDescendants, defaultConfig.defaults.includeDescendants)
+      includeDescendants: readBool(runtime?.defaults?.includeDescendants, defaultConfig.defaults.includeDescendants),
+      defaultPrinterId: readString(runtime?.defaults?.defaultPrinterId, defaultConfig.defaults.defaultPrinterId)
     },
     featureFlags: {
       inventory: readBool(runtime?.featureFlags?.inventory, defaultConfig.featureFlags.inventory),

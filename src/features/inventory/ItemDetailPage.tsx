@@ -26,7 +26,7 @@ const relationTypes = ["installed_in", "uses", "paired_with"] as const;
 
 const ItemDetailPage = () => {
   const params = useParams({ from: "/items/$itemId" });
-  const { featureFlags } = getRuntimeConfig();
+  const { defaults, featureFlags } = getRuntimeConfig();
   const { success, error } = useToasts();
   const [deleting, setDeleting] = useState(false);
 
@@ -38,7 +38,7 @@ const ItemDetailPage = () => {
 
   const [relationId, setRelationId] = useState("");
   const [detachLocationId, setDetachLocationId] = useState("");
-  const [printerId, setPrinterId] = useState("");
+  const [printerId, setPrinterId] = useState(defaults.defaultPrinterId);
   const [printStatus, setPrintStatus] = useState<{ kind: "success" | "warning" | "error" | "info"; title: string; message?: string } | null>(null);
   const [includeDeletedRelations, setIncludeDeletedRelations] = useState(false);
 

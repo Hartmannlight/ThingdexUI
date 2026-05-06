@@ -4,7 +4,8 @@ window.__THINGDEX_CONFIG__ = {
   printerHubBaseUrl: "/ext/printhub",
   rootLocationId: "",
   defaults: {
-    includeDescendants: true
+    includeDescendants: true,
+    defaultPrinterId: ""
   },
   featureFlags: {
     inventory: true,

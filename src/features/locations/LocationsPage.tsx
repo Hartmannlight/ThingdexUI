@@ -16,12 +16,12 @@ import { HelpIcon } from "@/components/HelpIcon";
 
 const LocationsPage = () => {
   const { success: toastSuccess, error: toastError } = useToasts();
-  const { featureFlags } = getRuntimeConfig();
+  const { defaults, featureFlags } = getRuntimeConfig();
   const rootLocationId = useBootstrapRootLocation();
   const [parentId, setParentId] = useState("");
   const [name, setName] = useState("");
   const [labelPrintEnabled, setLabelPrintEnabled] = useState(false);
-  const [printerId, setPrinterId] = useState("");
+  const [printerId, setPrinterId] = useState(defaults.defaultPrinterId);
   const [labelTemplateId, setLabelTemplateId] = useState("");
   const [filterValidTemplates, setFilterValidTemplates] = useState(true);
   const [includeDeleted, setIncludeDeleted] = useState(false);
@@ -166,7 +166,7 @@ const LocationsPage = () => {
       toastSuccess("Location created", response.name);
       setName("");
       setLabelPrintEnabled(false);
-      setPrinterId("");
+      setPrinterId(defaults.defaultPrinterId);
       setLabelTemplateId("");
       childrenQuery.refetch();
     } catch (error) {

@@ -6,6 +6,7 @@
     rootLocationId?: string;
     defaults?: {
       includeDescendants?: boolean | string;
+      defaultPrinterId?: string;
     };
     featureFlags?: Record<string, boolean | string | undefined>;
     audio?: {
