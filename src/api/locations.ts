@@ -31,5 +31,7 @@ export const listItemsInLocation = (
 
 export const getRootLocation = () => getThingdexSdk().locations.getRoot() as Promise<LocationOut>;
 
+export const bootstrapRootLocation = () => getThingdexSdk().locations.bootstrapRoot() as Promise<LocationOut>;
+
 export const getLocationTree = (params?: { root_location_id?: string | null; include_deleted?: boolean | null }) =>
   getThingdexSdk().locations.getTree(params) as Promise<LocationTreeNode>;
