@@ -2,6 +2,9 @@
 
 Scanner-first frontend for the Thingdex inventory API.
 
+The v2 scanner-first design and architecture notes live in
+[`docs/thingdex-ui-v2-design.md`](docs/thingdex-ui-v2-design.md).
+
 Key goals:
 - Rapid barcode-driven data entry with strong keyboard flow.
 - Clear location containment and item relations.

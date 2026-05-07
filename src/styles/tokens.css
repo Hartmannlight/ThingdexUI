@@ -1,27 +1,28 @@
-﻿:root {
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
-  color: #1f2328;
-  background-color: #f4f1ea;
-  --bg: #f4f1ea;
-  --bg-alt: #fbf7f1;
+:root {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: #0f172a;
+  background: #f5f7fb;
+  --bg: #f5f7fb;
   --panel: #ffffff;
-  --text: #1f2328;
-  --muted: #5b5f67;
-  --border: #e4ddd2;
-  --accent: #176f73;
-  --accent-strong: #0f4e52;
-  --accent-warm: #d9772c;
-  --success: #1e8c4a;
-  --warning: #d78529;
-  --error: #c23a2b;
-  --info: #2b6ea6;
-  --shadow: 0 16px 40px rgba(18, 20, 22, 0.08);
-  --radius: 16px;
-  --radius-sm: 10px;
+  --panel-soft: #f8fafc;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #d8dee8;
+  --border-strong: #b7c2d2;
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --success: #15945b;
+  --success-soft: #dcfce7;
+  --warning: #b7791f;
+  --warning-soft: #fef3c7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  --radius: 8px;
   --space-1: 6px;
   --space-2: 10px;
   --space-3: 16px;
   --space-4: 24px;
   --space-5: 32px;
-  --space-6: 40px;
 }
