@@ -1,17 +1,140 @@
-﻿services:
-  thingdex-ui:
+name: thingdex-demo
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: thingdex
+      POSTGRES_USER: thingdex
+      POSTGRES_PASSWORD: ${THINGDEX_DB_PASSWORD:-thingdex-dev-only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${THINGDEX_POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thingdex -d thingdex"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - data
+
+  zpl-printer:
+    build:
+      context: ../ZPL-II-Printer-Emulator
+      dockerfile: Dockerfile
+    environment:
+      ZPL_EMULATOR_HOST: 0.0.0.0
+      ZPL_EMULATOR_WEB_PORT: "9191"
+      ZPL_EMULATOR_TCP_HOST: 0.0.0.0
+      ZPL_EMULATOR_TCP_PORT: "9100"
+      ZPL_EMULATOR_LABEL_WIDTH_IN: "1.9685"
+      ZPL_EMULATOR_LABEL_HEIGHT_IN: "0.9843"
+      ZPL_EMULATOR_DPMM: "8"
+      ZPL_EMULATOR_MAX_JOBS: "50"
+    ports:
+      - "${ZPL_EMULATOR_WEB_PORT:-9191}:9191"
+      - "${ZPL_EMULATOR_TCP_PORT:-9102}:9100"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9191/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - backend
+
+  printhub:
+    build:
+      context: ../PrintHub-ZPL-ll
+      dockerfile: Dockerfile
+    environment:
+      ZPLGRID_PRINTERS_CONFIG: /app/configs/printers.yml
+      ZPLGRID_TEMPLATES_DIR: /data/templates
+      ZPLGRID_PRINT_DRAFTS_DIR: /data/drafts
+      ZPLGRID_COUNTERS_PATH: /data/counters.json
+      ZPLGRID_ENABLE_LABELARY_API: "0"
+      ZPLGRID_ENABLE_LABELARY_PREVIEW: "0"
+      ZPLGRID_ENABLE_LABELARY_TEMPLATES: "0"
+      ZPLGRID_TIMEZONE: Europe/Berlin
+    volumes:
+      - ./docker/printers.demo.yml:/app/configs/printers.yml:ro
+      - printhub_data:/data
+    ports:
+      - "${PRINTHUB_PORT:-8001}:8000"
+    depends_on:
+      zpl-printer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - backend
+
+  api:
+    build:
+      context: ../Thingdex
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://thingdex:${THINGDEX_DB_PASSWORD:-thingdex-dev-only}@postgres:5432/thingdex
+      ROOT_LOCATION_NAME: Zuhause
+      LABEL_PRINTING_ENABLED: "true"
+      LABEL_API_BASE: http://printhub:8000/v1
+      PRINTHUB_API_BASE: http://printhub:8000
+      LABEL_CONTAINER_TEMPLATE_ID: thingdex-demo-location
+    ports:
+      - "${THINGDEX_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      printhub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - backend
+      - data
+
+  seed:
+    image: python:3.13-alpine
+    environment:
+      THINGDEX_API_URL: http://api:8000
+      PRINTHUB_API_URL: http://printhub:8000
+      DEMO_PRINTER_ID: virtual-zpl-demo
+    command: ["python", "/seed/seed_demo.py"]
+    volumes:
+      - ./docker/seed_demo.py:/seed/seed_demo.py:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      printhub:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - backend
+
+  ui:
     build:
       context: ..
       dockerfile: ThingdexUI/Dockerfile
-    ports:
-      - "${THINGDEX_WEB_PORT:-5173}:80"
     environment:
-      THINGDEX_API_BASE_URL: "/api"
-      THINGDEX_API_UPSTREAM: "http://host.docker.internal:8000"
-      THINGDEX_LABEL_SERVICE_BASE_URL: "/ext/label"
-      THINGDEX_PRINTER_HUB_BASE_URL: "/ext/printhub"
-      THINGDEX_LABEL_SERVICE_UPSTREAM: "http://label.xn--jahnstrae-n1a.de/api/v1"
-      THINGDEX_PRINTER_HUB_UPSTREAM: "http://printhub.xn--jahnstrae-n1a.de/v1"
+      THINGDEX_API_BASE_URL: /api
+      THINGDEX_API_UPSTREAM: http://api:8000
+      THINGDEX_LABEL_SERVICE_BASE_URL: /ext/label
+      THINGDEX_LABEL_SERVICE_UPSTREAM: http://printhub:8000/v1
+      THINGDEX_PRINTER_HUB_BASE_URL: /ext/printhub
+      THINGDEX_PRINTER_HUB_UPSTREAM: http://printhub:8000/v1
       THINGDEX_ROOT_LOCATION_ID: ""
       THINGDEX_DEFAULT_INCLUDE_DESCENDANTS: "true"
       THINGDEX_FEATURE_INVENTORY: "true"
@@ -19,9 +142,35 @@
       THINGDEX_FEATURE_CREATE_ITEMS: "true"
       THINGDEX_FEATURE_MOVE: "true"
       THINGDEX_FEATURE_SEARCH: "true"
-      THINGDEX_FEATURE_SNAPSHOTS: "false"
+      THINGDEX_FEATURE_SNAPSHOTS: "true"
       THINGDEX_FEATURE_AUDIO: "true"
       THINGDEX_FEATURE_LABEL_PRINTING: "true"
       THINGDEX_AUDIO_ENABLED: "true"
       THINGDEX_AUDIO_VOLUME: "0.2"
+    ports:
+      - "${THINGDEX_WEB_PORT:-5173}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      printhub:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
+    networks:
+      - backend
+
+networks:
+  backend:
+  data:
+    internal: true
+
+volumes:
+  postgres_data:
+  printhub_data:

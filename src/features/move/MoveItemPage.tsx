@@ -1,223 +1,104 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/Button";
-import { Card } from "@/components/Card";
-import { Input } from "@/components/Input";
-import { StatusBanner } from "@/components/StatusBanner";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { getLocation, getPath } from "@/api/locations";
+import { useNavigate } from "@tanstack/react-router";
 import { getItem, moveItem } from "@/api/items";
+import { getLocation, getPath } from "@/api/locations";
 import { parseErrorMessage } from "@/api/errors";
-import { getRuntimeConfig } from "@/config/runtime";
-import { useToasts } from "@/hooks/useToasts";
-import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
+import type { LocationPathItem } from "@/api/types";
+import { Icon } from "@/components/Icon";
+
+type Result = {
+  id: string;
+  itemId: string;
+  title: string;
+  sourceId: string | null;
+  sourceLabel: string;
+  targetLabel: string;
+  status: "success" | "error" | "undone";
+  message?: string;
+};
+
+const pathLabel = (path: LocationPathItem[]) => path.map((node) => node.name).join(" › ");
 
 const MoveItemPage = () => {
-  const { featureFlags } = getRuntimeConfig();
-  const { success, error } = useToasts();
-  const rootLocationId = useBootstrapRootLocation();
+  const navigate = useNavigate();
+  const targetRef = useRef<HTMLInputElement | null>(null);
+  const itemRef = useRef<HTMLInputElement | null>(null);
+  const [targetInput, setTargetInput] = useState("");
+  const [targetId, setTargetId] = useState("");
+  const [targetPath, setTargetPath] = useState<LocationPathItem[]>([]);
+  const [itemInput, setItemInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [targetBusy, setTargetBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<Result[]>([]);
 
-  const [itemId, setItemId] = useState("");
-  const [locationId, setLocationId] = useState("");
-  const [status, setStatus] = useState<{ kind: "success" | "warning" | "error" | "info"; title: string; message?: string } | null>(null);
-  const [moving, setMoving] = useState(false);
+  useEffect(() => { targetRef.current?.focus(); }, []);
+  const successes = results.filter((result) => result.status === "success").length;
+  const failures = results.filter((result) => result.status === "error").length;
 
-  const itemQuery = useQuery({
-    queryKey: ["move-item", itemId],
-    queryFn: () => getItem(itemId),
-    enabled: itemId.length > 0
-  });
-
-  const locationQuery = useQuery({
-    queryKey: ["move-location", locationId],
-    queryFn: () => getLocation(locationId),
-    enabled: locationId.length > 0
-  });
-
-  const pathQuery = useQuery({
-    queryKey: ["move-location", locationId, "path"],
-    queryFn: () => getPath(locationId),
-    enabled: locationId.length > 0
-  });
-
-  const itemInputRef = useRef<HTMLInputElement | null>(null);
-  const locationInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    itemInputRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!locationId && rootLocationId) {
-      setLocationId(rootLocationId);
-    }
-  }, [locationId, rootLocationId]);
-
-  const move = async () => {
-    if (!itemId.trim()) {
-      setStatus({ kind: "warning", title: "Scan item first", message: "Item ID is required." });
-      itemInputRef.current?.focus();
-      return;
-    }
-    if (!locationId.trim()) {
-      setStatus({ kind: "warning", title: "Scan location", message: "Destination location is required." });
-      locationInputRef.current?.focus();
-      return;
-    }
-    setMoving(true);
+  const resolveTarget = async () => {
+    const id = targetInput.trim();
+    if (!id || targetBusy) return;
+    setTargetBusy(true); setError(null);
     try {
-      await moveItem(itemId.trim(), { location_id: locationId.trim() });
-      success("Item moved", `${itemId} -> ${locationId}`);
-      setStatus({ kind: "success", title: "Move complete", message: "Ready for next scan." });
-      setItemId("");
-      setLocationId(rootLocationId ?? "");
-      itemInputRef.current?.focus();
-    } catch (err) {
-      error("Move failed", parseErrorMessage(err));
-      setStatus({ kind: "error", title: "Move failed", message: parseErrorMessage(err) });
-    } finally {
-      setMoving(false);
-    }
+      await getLocation(id);
+      const path = await getPath(id);
+      setTargetId(id); setTargetPath(path); setTargetInput("");
+      window.setTimeout(() => itemRef.current?.focus(), 0);
+    } catch (err) { setError(`Ziel nicht gefunden: ${parseErrorMessage(err)}`); targetRef.current?.select(); }
+    finally { setTargetBusy(false); }
   };
 
-  const itemSummary = useMemo(() => {
-    if (!itemQuery.data) return null;
-    return `${itemQuery.data.id} (${itemQuery.data.type?.name ?? itemQuery.data.type_id})`;
-  }, [itemQuery.data]);
+  const scanItem = async () => {
+    const id = itemInput.trim();
+    if (!id || busy || !targetId) return;
+    setBusy(true); setError(null); setItemInput("");
+    const resultId = crypto.randomUUID();
+    try {
+      const item = await getItem(id);
+      const sourceId = item.location?.physical_location_id ?? null;
+      const sourceLabel = item.location?.effective_location_path?.length ? pathLabel(item.location.effective_location_path) : "Ohne physischen Ort";
+      if (sourceId === targetId) throw new Error("Dieses Item liegt bereits am gewählten Ziel.");
+      await moveItem(id, { location_id: targetId });
+      const result: Result = { id: resultId, itemId: id, title: item.description || item.type?.name || "Item", sourceId, sourceLabel, targetLabel: pathLabel(targetPath), status: "success" };
+      setResults((current) => [result, ...current].slice(0, 30));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : parseErrorMessage(err);
+      const result: Result = { id: resultId, itemId: id, title: id, sourceId: null, sourceLabel: "–", targetLabel: pathLabel(targetPath), status: "error", message };
+      setResults((current) => [result, ...current].slice(0, 30));
+      setError(message);
+    } finally { setBusy(false); window.setTimeout(() => itemRef.current?.focus(), 0); }
+  };
 
-  const handleItemKey = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        locationInputRef.current?.focus();
-        locationInputRef.current?.select();
-      }
-    },
-    []
-  );
+  const undoLast = async () => {
+    const latest = results.find((result) => result.status === "success");
+    if (!latest?.sourceId || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const current = await getItem(latest.itemId);
+      if (current.location?.physical_location_id !== targetId) throw new Error("Undo abgebrochen: Das Item wurde inzwischen erneut verändert.");
+      await moveItem(latest.itemId, { location_id: latest.sourceId });
+      setResults((items) => items.map((item) => item.id === latest.id ? { ...item, status: "undone", message: "Rückgängig gemacht" } : item));
+    } catch (err) { setError(parseErrorMessage(err)); }
+    finally { setBusy(false); window.setTimeout(() => itemRef.current?.focus(), 0); }
+  };
 
-  const handleLocationKey = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        void move();
-      }
-    },
-    [move]
-  );
+  const onEnter = (callback: () => void) => (event: KeyboardEvent<HTMLInputElement>) => { if (event.key === "Enter") { event.preventDefault(); callback(); } };
+  const changeTarget = () => { setTargetId(""); setTargetPath([]); setError(null); window.setTimeout(() => targetRef.current?.focus(), 0); };
 
-  if (!featureFlags.moveWorkflow) {
-    return (
-      <div className="page">
-        <StatusBanner kind="warning" title="Feature disabled" message="Move workflow is disabled." />
-      </div>
-    );
-  }
-
-  return (
-    <div className="page">
-      <div className="move-grid">
-        <Card className="card--focus">
-          <div className="card__header">
-            <h2>Move Item</h2>
-          </div>
-          {status && <StatusBanner kind={status.kind} title={status.title} message={status.message} />}
-
-          <div className="move-steps">
-            <div className="move-step">
-              <div className="move-step__title">1. Scan item</div>
-              <div className="move-step__row">
-                <Input
-                  className="input--lg"
-                  placeholder="Item ID"
-                  value={itemId}
-                  onChange={(event) => setItemId(event.target.value)}
-                  onKeyDown={handleItemKey}
-                  help="Scan the item UUID; pressing Enter jumps to the destination field."
-                  ref={itemInputRef}
-                />
-              </div>
-              {itemQuery.isLoading && <div className="muted">Loading item...</div>}
-              {itemSummary && <div className="pill">{itemSummary}</div>}
-              {itemQuery.isError && (
-                <StatusBanner kind="error" title="Item not found" message={parseErrorMessage(itemQuery.error)} />
-              )}
-            </div>
-
-            <div className="move-step">
-              <div className="move-step__title">2. Scan destination</div>
-              <div className="move-step__row">
-                <Input
-                  className="input--lg"
-                  placeholder="Destination location ID"
-                  value={locationId}
-                  onChange={(event) => setLocationId(event.target.value)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  onKeyDown={handleLocationKey}
-                  help="Scan where the item should be stored; Enter confirms the move."
-                  ref={locationInputRef}
-                />
-              </div>
-              {locationQuery.isLoading && <div className="muted">Loading location...</div>}
-              {locationQuery.data && <div className="pill">{locationQuery.data.name}</div>}
-              {locationQuery.isError && (
-                <StatusBanner kind="error" title="Location not found" message={parseErrorMessage(locationQuery.error)} />
-              )}
-              {pathQuery.data && <Breadcrumbs path={pathQuery.data} />}
-            </div>
-
-            <div className="move-step move-step--confirm">
-              <div className="move-step__title">3. Confirm move</div>
-              <div className="muted">Press Enter in destination field to confirm.</div>
-              <div className="move-step__row">
-                <Button size="lg" onClick={move} disabled={moving}>
-                  {moving ? "Moving..." : "Confirm Move"}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="ghost"
-                  onClick={() => {
-                    setItemId("");
-                    setLocationId(rootLocationId ?? "");
-                    setStatus({ kind: "info", title: "Reset", message: "Ready for new scan." });
-                    itemInputRef.current?.focus();
-                  }}
-                >
-                  Reset
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="card__header">
-            <h3>Recovery</h3>
-          </div>
-          <div className="form-stack">
-            <Button variant="outline" onClick={() => itemInputRef.current?.focus()}>
-              Rescan item
-            </Button>
-            <Button variant="outline" onClick={() => locationInputRef.current?.focus()}>
-              Rescan location
-            </Button>
-            <Button
-              variant="danger"
-              onClick={() => {
-                setItemId("");
-                setLocationId(rootLocationId ?? "");
-                setStatus({ kind: "warning", title: "Cleared", message: "Ready for new scan." });
-                itemInputRef.current?.focus();
-              }}
-            >
-              Clear both
-            </Button>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
+  return <div className="scan-workflow">
+    <header className="scan-workflow__header"><button className="icon-button" onClick={() => navigate({ to: "/scan" })} aria-label="Zurück"><Icon name="arrow-left" /></button><h1>Umlagern</h1><span className="mode-pill">AKTIV</span><span className="scan-workflow__online"><i/> Online</span></header>
+    <main className="scan-workflow__main">
+      {!targetId ? <section className="scan-setup"><span className="scan-setup__icon"><Icon name="map" size={40}/></span><div><div className="eyebrow">Schritt 1 von 2</div><h2>Zielort festlegen</h2><p>Scanne den Lagerort, in den du mehrere Items verschieben möchtest.</p></div><div className="scan-input-box"><Icon name="scan"/><input ref={targetRef} value={targetInput} onChange={(event) => setTargetInput(event.target.value)} onKeyDown={onEnter(resolveTarget)} placeholder="Lagerort scannen …"/><button onClick={resolveTarget} disabled={targetBusy}>{targetBusy ? "Prüfe …" : "Übernehmen"}</button></div>{error && <div className="scan-error"><Icon name="warning"/>{error}</div>}</section> : <>
+        <section className="target-strip"><Icon name="map"/><div><small>AKTIVES ZIEL</small><strong>{pathLabel(targetPath)}</strong></div><button onClick={changeTarget} disabled={busy}>Ziel ändern</button></section>
+        <section className={`scan-ready${error ? " scan-ready--error" : ""}`}><span><Icon name={busy ? "history" : error ? "warning" : "scan"} size={34}/></span><div><strong>{busy ? "WIRD VERARBEITET" : error ? "LETZTER SCAN ABGELEHNT" : "NÄCHSTES ITEM SCANNEN"}</strong><small>{error || "Enter bestätigt automatisch – das Ziel bleibt gesperrt"}</small></div><input ref={itemRef} value={itemInput} onChange={(event) => setItemInput(event.target.value)} onKeyDown={onEnter(scanItem)} disabled={busy} aria-label="Item scannen"/></section>
+        <section className="session-summary"><span><b>{successes}</b> verschoben</span><span><b className={failures ? "text-error" : ""}>{failures}</b> Fehler</span><span>{results.length ? "Letzter Scan gerade eben" : "Bereit"}</span></section>
+        <section className="scan-results">{results.length === 0 ? <div className="scan-results__empty"><Icon name="scan"/><span>Scanne jetzt das erste Item.</span></div> : results.map((result) => <article key={result.id} className={`scan-result scan-result--${result.status}`}><span className="scan-result__icon"><Icon name={result.status === "success" ? "check" : result.status === "undone" ? "history" : "x"}/></span><div><strong>{result.title}</strong><small>{result.status === "error" ? result.message : result.status === "undone" ? result.message : `${result.sourceLabel} → ${result.targetLabel}`}</small></div><code>{result.itemId}</code></article>)}</section>
+      </>}
+    </main>
+    {targetId && <footer className="scan-workflow__footer"><button className="workflow-button workflow-button--secondary" onClick={undoLast} disabled={busy || !results.some((item) => item.status === "success" && item.sourceId)}><Icon name="history"/> Letzten rückgängig</button><button className="workflow-button workflow-button--primary" onClick={() => navigate({ to: "/" })}><span>Fertig · {successes}</span><Icon name="check"/></button></footer>}
+  </div>;
 };
 
 export default MoveItemPage;

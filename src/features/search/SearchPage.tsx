@@ -191,14 +191,15 @@ const SearchPage = () => {
 
   return (
     <div className="page">
+      <div className="section-heading"><div><div className="eyebrow">Typisierte Abfragen</div><h1>Bestand durchsuchen</h1></div><span className="ready-pill"><span /> Scan oder Filter</span></div>
       <div className="grid-2">
         <Card>
           <div className="card__header">
-            <h3>Lookup by ID</h3>
+            <h3>Direkte Auflösung</h3>
           </div>
           <div className="form-stack">
             <Input
-              placeholder="Scan or paste an item/location ID"
+              placeholder="Item- oder Lagerort-ID scannen"
               value={lookupId}
               onChange={(event) => setLookupId(event.target.value)}
               onKeyDown={onLookupEnter}
@@ -206,7 +207,7 @@ const SearchPage = () => {
               help="Scan any UUID; the system checks item then location and shows the matching record."
             />
             <Button size="lg" onClick={resolveLookup}>
-              Resolve ID
+              Code auflösen
             </Button>
             {lookupStatus && <StatusBanner kind={lookupStatus.kind} title={lookupStatus.title} message={lookupStatus.message} />}
             {lookupResult?.kind === "item" && (
@@ -253,9 +254,9 @@ const SearchPage = () => {
 
         <Card>
           <div className="card__header">
-            <h2>Search Inventory</h2>
+            <h2>Erweiterte Suche</h2>
             <Button variant="outline" size="sm" onClick={addFilter}>
-              Add Filter
+              Filter hinzufügen
             </Button>
           </div>
           <div className="form-stack">
@@ -264,7 +265,7 @@ const SearchPage = () => {
               onChange={(event) => setType(event.target.value)}
               help="Limit results to one item type to show relevant fields and filters."
             >
-              <option value="">Any type</option>
+              <option value="">Alle Item Types</option>
               {itemTypesQuery.data?.map((itemType) => (
                 <option key={itemType.id} value={itemType.name}>
                   {itemType.name}
@@ -292,7 +293,7 @@ const SearchPage = () => {
                 checked={includeDescendants}
                 onChange={(event) => setIncludeDescendants(event.target.checked)}
               />
-              <span>Include descendants</span>
+              <span>Unterorte einbeziehen</span>
               <HelpIcon text="Also include items stored in nested child locations under the chosen root." />
             </label>
             <Select
@@ -300,9 +301,9 @@ const SearchPage = () => {
               onChange={(event) => setInUse(event.target.value)}
               help="Filter by whether items are currently in use or stored."
             >
-              <option value="">In use or stored</option>
-              <option value="true">In use</option>
-              <option value="false">Stored</option>
+              <option value="">Gelagert oder in Benutzung</option>
+              <option value="true">In Benutzung</option>
+              <option value="false">Gelagert</option>
             </Select>
 
             <div className="filters">
@@ -369,14 +370,14 @@ const SearchPage = () => {
             </div>
 
             <Button size="lg" onClick={runSearch} disabled={loading}>
-              {loading ? "Searching..." : "Run Search"}
+              {loading ? "Suche läuft …" : "Suchen"}
             </Button>
           </div>
         </Card>
 
         <Card>
           <div className="card__header">
-            <h3>Results</h3>
+            <h3>Ergebnisse</h3>
           </div>
           {status && <StatusBanner kind={status.kind} title={status.title} message={status.message} />}
           {results.length === 0 && !loading && <div className="empty">No results yet.</div>}

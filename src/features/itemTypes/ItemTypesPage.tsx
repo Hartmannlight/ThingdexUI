@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/Textarea";
 import { deleteItemType, listItemTypes, updateItemType } from "@/api/itemTypes";
 import { listLabelTemplates } from "@/api/labels";
 import { getRuntimeConfig } from "@/config/runtime";
+import { Icon } from "@/components/Icon";
 import { parseErrorMessage } from "@/api/errors";
 
 const ItemTypesPage = () => {
@@ -132,6 +134,7 @@ const ItemTypesPage = () => {
 
   return (
     <div className="page">
+      <div className="section-heading"><div><div className="eyebrow">Desktop-Verwaltung</div><h1>Item Types</h1></div><Link to="/item-types/create" className="button"><Icon name="plus" size={19}/> Neuer Item Type</Link></div>
       <div className="grid-2">
         <Card>
           <div className="card__header">

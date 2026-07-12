@@ -14,7 +14,7 @@ export const Toasts = () => {
             {toast.message && <div className="toast__message">{toast.message}</div>}
           </div>
           <button className="toast__close" onClick={() => remove(toast.id)} type="button">
-            Dismiss
+            Schließen
           </button>
         </div>
       ))}

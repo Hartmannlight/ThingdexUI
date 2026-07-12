@@ -4,13 +4,14 @@ import { Link } from "@tanstack/react-router";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { Card } from "@/components/Card";
 import { LocationTree } from "@/components/LocationTree";
-import { StatusBanner } from "@/components/StatusBanner";
+import { StatusBanner, type StatusKind } from "@/components/StatusBanner";
 import { HelpIcon } from "@/components/HelpIcon";
 import { getLocation, getPath, listItemsInLocation } from "@/api/locations";
 import { listItemTypes } from "@/api/itemTypes";
 import { getRuntimeConfig } from "@/config/runtime";
 import { parseErrorMessage } from "@/api/errors";
 import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
+import { Icon } from "@/components/Icon";
 
 const InventoryPage = () => {
   const config = getRuntimeConfig();
@@ -61,7 +62,7 @@ const InventoryPage = () => {
     );
   }
 
-  const pageStatus = useMemo(() => {
+  const pageStatus = useMemo<{ kind: StatusKind; title: string; message: string } | null>(() => {
     if (itemsQuery.isError) return { kind: "error", title: "Items failed", message: parseErrorMessage(itemsQuery.error) };
     if (locationQuery.isError)
       return { kind: "error", title: "Location failed", message: parseErrorMessage(locationQuery.error) };
@@ -84,11 +85,15 @@ const InventoryPage = () => {
 
   return (
     <div className="page">
+      <div className="section-heading">
+        <div><div className="eyebrow">Lagerorte und Items</div><h1>Bestand</h1></div>
+        <div className="page-header__actions"><Link to="/search" className="button button--outline"><Icon name="search" size={19} /> Suchen</Link><Link to="/locations" className="button"><Icon name="plus" size={19} /> Lagerort</Link></div>
+      </div>
       {pageStatus && <StatusBanner kind={pageStatus.kind} title={pageStatus.title} message={pageStatus.message} />}
       <div className="inventory">
         <Card className="inventory__tree">
           <div className="card__header">
-            <h3>Location Tree</h3>
+            <h3>Lagerorte</h3>
           </div>
           <LocationTree
             rootId={rootLocationId}
@@ -111,7 +116,7 @@ const InventoryPage = () => {
                   checked={includeDescendants}
                   onChange={(event) => setIncludeDescendants(event.target.checked)}
                 />
-                <span>Include descendants</span>
+                <span>Unterorte</span>
                 <HelpIcon text="Also include items stored in nested child locations under the selected node." />
               </label>
               <label className="toggle">
@@ -120,20 +125,20 @@ const InventoryPage = () => {
                   checked={includeDeleted}
                   onChange={(event) => setIncludeDeleted(event.target.checked)}
                 />
-                <span>Include deleted</span>
+                <span>Gelöschte</span>
               </label>
             </div>
           </div>
-          {selectedLocationId && <div className="muted">Location ID: {selectedLocationId}</div>}
-          <div className="inventory__summary">{itemCount} items</div>
+          {selectedLocationId && <div className="muted inventory__location-id">ID: {selectedLocationId}</div>}
+          <div className="inventory__summary">{itemCount} {itemCount === 1 ? "Item" : "Items"}</div>
           <div className="inventory__list">
-            {itemsQuery.isLoading && <div className="empty">Loading items...</div>}
-            {!itemsQuery.isLoading && itemCount === 0 && <div className="empty">No items in this location.</div>}
+            {itemsQuery.isLoading && <div className="empty">Items werden geladen …</div>}
+            {!itemsQuery.isLoading && itemCount === 0 && <div className="empty">Keine Items an diesem Lagerort.</div>}
             {itemsQuery.data?.map((item) => (
               <Link key={item.id} to="/items/$itemId" params={{ itemId: item.id }} className="item-row">
-                <div className="item-row__title">{typeNameMap.get(item.type_id) ?? "Item"}</div>
+                <div><div className="item-row__title">{typeNameMap.get(item.type_id) ?? "Item"}</div><div className="item-row__meta">{item.id}</div></div>
                 <div className="item-row__meta">{item.status ?? "stored"}</div>
-                <div className="item-row__meta">{item.location_id ? "Stored" : "In use"}</div>
+                <div className="item-row__meta">{item.location_id ? "gelagert" : "in Benutzung"}</div>
               </Link>
             ))}
           </div>
