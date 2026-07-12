@@ -3,7 +3,6 @@ import type { KeyboardEvent } from "react";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
-import { Select } from "@/components/Select";
 import { StatusBanner } from "@/components/StatusBanner";
 import { deleteRelation, updateRelation } from "@/api/relations";
 import type { ItemRelationUpdate } from "@/api/types";
@@ -15,7 +14,6 @@ const UpdateRelationPage = () => {
   const { featureFlags } = getRuntimeConfig();
   const { success, error } = useToasts();
   const [relationId, setRelationId] = useState("");
-  const [active, setActive] = useState("keep");
   const [quantity, setQuantity] = useState("");
   const [slot, setSlot] = useState("");
   const [notes, setNotes] = useState("");
@@ -23,7 +21,6 @@ const UpdateRelationPage = () => {
   const [status, setStatus] = useState<{ kind: "success" | "warning" | "error" | "info"; title: string; message?: string } | null>(null);
 
   const relationRef = useRef<HTMLInputElement | null>(null);
-  const activeRef = useRef<HTMLSelectElement | null>(null);
   const quantityRef = useRef<HTMLInputElement | null>(null);
   const slotRef = useRef<HTMLInputElement | null>(null);
   const notesRef = useRef<HTMLInputElement | null>(null);
@@ -39,9 +36,6 @@ const UpdateRelationPage = () => {
       return;
     }
     const payload: ItemRelationUpdate = {};
-    if (active !== "keep") {
-      payload.active = active === "true";
-    }
     if (quantity.trim()) {
       const parsed = Number(quantity);
       if (Number.isNaN(parsed)) {
@@ -68,7 +62,6 @@ const UpdateRelationPage = () => {
       success("Relation updated", relationId.trim());
       setStatus({ kind: "success", title: "Updated", message: "Ready for next scan." });
       setRelationId("");
-      setActive("keep");
       setQuantity("");
       setSlot("");
       setNotes("");
@@ -85,7 +78,7 @@ const UpdateRelationPage = () => {
   const onRelationEnter = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      activeRef.current?.focus();
+      quantityRef.current?.focus();
     }
   };
 
@@ -104,7 +97,6 @@ const UpdateRelationPage = () => {
       success("Relation deleted", relationId.trim());
       setStatus({ kind: "success", title: "Deleted", message: "Relation deleted." });
       setRelationId("");
-      setActive("keep");
       setQuantity("");
       setSlot("");
       setNotes("");
@@ -115,13 +107,6 @@ const UpdateRelationPage = () => {
       setStatus({ kind: "error", title: "Delete failed", message });
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const onActiveEnter = (event: KeyboardEvent<HTMLSelectElement>) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      quantityRef.current?.focus();
     }
   };
 
@@ -168,20 +153,9 @@ const UpdateRelationPage = () => {
             value={relationId}
             onChange={(event) => setRelationId(event.target.value)}
             onKeyDown={onRelationEnter}
-            help="Scan the relation UUID you want to enable or disable."
+            help="Scan the relation UUID whose quantity, slot or notes you want to update."
             ref={relationRef}
           />
-          <Select
-            value={active}
-            onChange={(event) => setActive(event.target.value)}
-            onKeyDown={onActiveEnter}
-            help="Set the active state; choose keep to leave it unchanged."
-            ref={activeRef}
-          >
-            <option value="keep">Keep current</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </Select>
           <Input
             placeholder="Quantity (optional)"
             value={quantity}

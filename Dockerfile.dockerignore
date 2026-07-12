@@ -1,0 +1,10 @@
+**
+!ThingdexUI/
+!ThingdexUI/**
+!thingdex-sdk/
+!thingdex-sdk/**
+!printhub-sdk/
+!printhub-sdk/**
+**/.git
+**/node_modules
+**/dist

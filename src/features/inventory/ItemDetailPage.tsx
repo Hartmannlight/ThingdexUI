@@ -13,8 +13,7 @@ import {
   deleteRelation,
   detachRelation,
   listChildRelations,
-  listParentRelations,
-  updateRelation
+  listParentRelations
 } from "@/api/relations";
 import { listPrinters } from "@/api/printers";
 import { printLabel } from "@/api/labelPrint";
@@ -155,13 +154,17 @@ const ItemDetailPage = () => {
   };
 
   const toggleActive = async (relationIdValue: string, active: boolean) => {
+    if (!active) {
+      error("Relation is detached", "Attach the item again to create a new active relation.");
+      return;
+    }
     try {
-      await updateRelation(relationIdValue, { active: !active });
-      success("Relation updated", relationIdValue);
+      await detachRelation(relationIdValue, { location_id: null });
+      success("Relation detached", relationIdValue);
       childRelationsQuery.refetch();
       parentRelationsQuery.refetch();
     } catch (err) {
-      error("Update failed", parseErrorMessage(err));
+      error("Detach failed", parseErrorMessage(err));
     }
   };
 

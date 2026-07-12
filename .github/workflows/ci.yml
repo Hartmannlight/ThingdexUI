@@ -1,0 +1,37 @@
+name: UI CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, feat/sdk-api-adoption]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ThingdexUI
+        uses: actions/checkout@v4
+        with:
+          path: workspace/ThingdexUI
+      - name: Check out Thingdex SDK
+        uses: actions/checkout@v4
+        with:
+          repository: Hartmannlight/thingdex-sdk
+          path: workspace/thingdex-sdk
+      - name: Check out PrintHub SDK
+        uses: actions/checkout@v4
+        with:
+          repository: Hartmannlight/printhub-sdk
+          path: workspace/printhub-sdk
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build
+        working-directory: workspace/thingdex-sdk
+      - run: npm ci && npm run build
+        working-directory: workspace/printhub-sdk
+      - run: npm ci && npm run typecheck && npm run build
+        working-directory: workspace/ThingdexUI

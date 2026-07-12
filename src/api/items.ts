@@ -1,6 +1,7 @@
 import { getThingdexSdk } from "@/api/client";
 import type {
   ItemCreate,
+  ItemCreateResponse,
   ItemDetailOut,
   ItemBulkCreate,
   ItemBulkUpdate,
@@ -27,7 +28,8 @@ export const listItems = (filters?: {
 
 export const getItem = (itemId: string) => getThingdexSdk().items.get(itemId) as Promise<ItemDetailOut>;
 
-export const createItem = (payload: ItemCreate) => getThingdexSdk().items.create(payload) as Promise<ItemOut>;
+export const createItem = (payload: ItemCreate) =>
+  getThingdexSdk().items.createWithSideEffects(payload) as Promise<ItemCreateResponse>;
 
 export const deleteItem = (itemId: string) => getThingdexSdk().items.delete(itemId);
 

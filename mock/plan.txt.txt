@@ -1,0 +1,415 @@
+# Plan für den Neubau der ThingdexUI
+
+Stand: Abgleich der acht 800×480-Mocks mit dem Quellstand von `main`.
+
+## Ansatz
+
+Die neue UI wird aufgabenorientiert und scanner-first neu aufgebaut, übernimmt aber die fachlich wertvollen Funktionen aus `main`. Es entsteht eine responsive React-Anwendung mit zwei Darstellungen derselben Workflows: ein reduzierter Touch-/Scanner-Modus für 7 Zoll und ein informationsreicher Desktop-Modus für Suche, Pflege und Administration.
+
+React, TypeScript, Vite, TanStack Router und TanStack Query bleiben zunächst gesetzt. Auf dem Pi werden Routen lazy geladen, Datenmengen begrenzt und Hintergrundarbeit vermieden. Ein Architekturwechsel erfolgt nur, wenn reproduzierbare Messungen auf dem Referenz-Pi zeigen, dass die Zielwerte nicht erreicht werden.
+
+## Scope
+
+### In Scope
+
+- tägliche Scanner-Workflows auf 800×480 und größeren Touchscreens
+- Bestandsnavigation über beliebig tiefe Lagerorte
+- direkte Code-Auflösung und schemaabhängige Expertensuche
+- Gegenstandsdetails einschließlich Properties, Relationen, Verlauf und Snapshots
+- Erstellen/Bearbeiten von Items, Item Types und Lagerorten
+- Verschieben von Items und ganzen Lagerorten
+- Anbringen, Lösen und Bearbeiten von Item-Relationen
+- Etikettendruck für Items und Lagerorte
+- Feature-Flags, Audiofeedback, Fehler- und Offlinezustände
+- Desktop-Verwaltung für seltene und destruktive Funktionen
+
+### Nicht Teil des ersten UI-Schnitts
+
+- grafischer ZPL-Template-Editor; dafür bleibt LabelArchitect zuständig
+- Drucker-Rohdiagnose in der täglichen Navigation
+- Mehrbenutzer-, Rollen- und Rechteverwaltung
+- echte Offline-Buchungen ohne serverseitige Idempotenz
+- Mengenbestandslogik, solange sie nicht im Thingdex-Datenmodell definiert ist
+
+---
+
+# 1. Verbindliche Produktprinzipien
+
+## Eine Anwendung, zwei Arbeitsmodi
+
+- **Compact/Kiosk (bis ca. 1024 px):** große Touch-Ziele, höchstens zwei Hauptaktionen nebeneinander, feste Kopf-/Fußbereiche, keine großen Tabellen, Scan-Fokus.
+- **Desktop (ab ca. 1200 px):** dauerhafte Seitennavigation, mehrspaltige Arbeitsflächen, Filterpanel, mehr Metadaten und schnelle Tastaturbedienung.
+- Dazwischen entscheidet der Platz, nicht ein erkannter Gerätetyp. Die fachlichen Komponenten und Routen bleiben gleich.
+
+## Sicherer Scanner-Standard
+
+- Keyboard-Wedge-Scanner liefern Zeichen und `Enter`.
+- Die UI zeigt „Scan-Eingabe bereit“, nicht „Scanner verbunden“.
+- Außerhalb eines bewusst gestarteten Änderungsmodus löst ein Scan nur Suche/Auflösung aus.
+- In normalen Formularen wird globales Scanner-Capturing deaktiviert.
+- Eine Bildschirmtastatur öffnet nur nach „Code manuell eingeben“.
+- Erfolg wird erst nach bestätigter Serverantwort gemeldet.
+
+## Fachmodell vor Mock-Annahme
+
+Die Mocks zeigen Mengen wie „37 Stück“ und Aktionen wie „Bestand −1“. Das ist mit `main` nicht allgemein abgedeckt:
+
+- Thingdex verwaltet Items mit `type_id`, `location_id`, `status` und schemaabhängigen `props`.
+- `quantity` existiert bei Item-Relationen, nicht als allgemeines Bestandsfeld.
+- Ein Scan eines Item-Codes verändert oder verschiebt genau dieses Item.
+- Mengenartikel benötigen zuerst eine verbindliche Backend-/Datenmodell-Entscheidung.
+- Bis dahin verwendet die UI Texte wie „Item verschoben“ und zeigt keinen erfundenen Bestand.
+
+## Umsetzungsstatus je Workflow
+
+- **A – mit aktueller API möglich:** ein vorhandener `main`-Endpunkt reicht.
+- **B – UI-Orchestrierung nötig:** mehrere vorhandene Endpunkte werden koordiniert.
+- **C – Backend-Erweiterung nötig:** nicht zuverlässig nur im Browser umsetzbar.
+
+---
+
+# 2. Use-Case-Inventur aus `main`
+
+| Bereich | In `main` vorhanden | Einbau in die neue UI |
+| --- | --- | --- |
+| Bestand | Lagerortbaum, Kinder, Items pro Ort, Nachfahren, Root-Bootstrap | Compact als Drill-down; Desktop als Baum + Liste |
+| ID-Auflösung | UUID erst als Item, dann als Lagerort auflösen | globale sichere Scan-/Suchleiste |
+| Expertensuche | Typ, Orts-Teilbaum, `in_use`, mehrere Property-Filter und Operatoren | Desktop-Filterbuilder; compact als Vollbild-Filter |
+| Typisierte Suche | Filterfelder aus Item-Type-Schema; Enum-Auswahl; boolesche/numerische/Listenwerte | Eingaben aus Schema statt freie Textfelder |
+| Item-Erfassung | dynamische Felder, Pflichtfelder, Enum/Boolean/Number/Date, Enter-Auto-Advance, Prefill, Ort/Props behalten, optional Label | Desktop-Formular + kompakte Serienerfassung |
+| Item Types | Builder/Editor für Typ, Constraints, Einheit, Default, Historie, Hilfe, Gruppe, Reihenfolge, UI und Label-Template; JSON-Modus | vollständiger Desktop-Editor; auf 7 Zoll nur auswählen/lesen |
+| Item-Pflege | Status/Beschreibung ändern; Props mergen oder ersetzen | im Itemdetail unter „Bearbeiten“ zusammenführen |
+| Historie | Property-Historie nach Property und Limit | Desktop-Tab; compact letzte Änderung + Link |
+| Snapshots | erstellen, auflisten und löschen; Text/JSON/Metadaten | Desktop-Tab; große Daten lazy laden |
+| Fehlender Ort | Items ohne physischen Lagerort | echte Aufgabe „Lagerort zuweisen“ |
+| Lagerorte | erstellen, browsen, ändern, verschieben, löschen, Label-Metadaten und optionaler Druck | Bestand + Desktop-Verwaltung; Verschieben touchfähig |
+| Item verschieben | Item und Ziel scannen/prüfen, Pfad anzeigen, verschieben, nächsten Vorgang vorbereiten | höchstpriorisierter Pi-Workflow; Serienmodus ergänzen |
+| Relationen | `installed_in`, `uses`, `paired_with`; attach/detach/update/delete; quantity/slot/notes; Eltern/Kinder; effektiver Ort | eigener Scanflow + Desktop-Relationseditor |
+| Etiketten | Item-/Location-Label, Druckerwahl, Templateprüfung, Druck beim Erstellen | Schnelldruck + Desktopdetails; „gesendet/queued“ formulieren |
+| Soft Delete | Item, Type, Location, Relation und Snapshot; gelöschte Einträge optional einbeziehen | nur Desktop/Admin mit konkreter Bestätigung |
+| Konfiguration | Runtime-URLs, Root, Default für Nachfahren, Feature-Flags, Audio/Lautstärke | erhalten und Navigation/Queries konsistent sperren |
+| Bulk-API | Bulk Create/Update/Move-Clients | für Desktop/Serienmodus prüfen, Transaktionsverhalten nicht annehmen |
+
+Wichtige Lücken des alten Plans sind damit: typisierte Suche, Item-Type-Editor, dynamische Erfassung, physischer vs. effektiver Ort, Relationen, Verlauf, Snapshots, Missing Location, Soft Delete und das Verschieben ganzer Lagerorte.
+
+---
+
+# 3. Informationsarchitektur
+
+## Compact/Kiosk
+
+Die vier Bereiche der Mocks bleiben:
+
+1. **Start** – globale Scan-/Suchleiste, Finden, Erfassen, Umlagern, relevante Aufgaben. „Entnehmen“ erst nach geklärter Semantik.
+2. **Bestand** – Lagerorte, Items, Suche und Details.
+3. **Scannen** – Umlagern, Item erfassen, Relation anbringen/lösen, Etikett; später Inventur.
+4. **Aufgaben** – zunächst fehlende Lagerorte und lokale Fehler; spätere Backend-Aufgaben ergänzen.
+
+In einer Scan-Sitzung verschwindet die Navigation. Modus, Ziel/Kontext, letzter bestätigter Effekt, Fehler, Undo und Abschluss bleiben sichtbar.
+
+## Desktop
+
+- **Übersicht:** Start, Aufgaben
+- **Bestand:** Lagerorte, Items, Suche
+- **Vorgänge:** Erfassen, Umlagern, Relationen, Etiketten
+- **Verwaltung:** Item Types, Historie/Snapshots, fehlende Orte, gelöschte Datensätze
+- **System:** Konfiguration/Diagnose, soweit später benötigt
+
+Dieselben Routen zeigen auf Desktop zusätzliche Tabs, Filter und Bearbeitungsfunktionen.
+
+---
+
+# 4. Zentrale Workflows
+
+## 4.1 Globale Suche – A/C
+
+Zwei Wege werden klar getrennt:
+
+- **Direkte Auflösung (A):** UUID/Code scannen oder einfügen; Item und Lagerort unterscheiden; Detail öffnen.
+- **Textsuche:** nach sprechendem Namen/Properties suchen. Die vorhandene API ist filterorientiert; echte Volltextsuche ist gegebenenfalls C.
+
+Erweiterte Suche:
+
+- Item Type auswählen; Property-Auswahl aus `schema.fields`
+- Eingabe als Zahl, Checkbox, Datum, Enum oder Text
+- nur zum Feldtyp passende Operatoren anbieten
+- mehrere Filter mit sichtbarer UND-Verknüpfung
+- Ortsauswahl mit „Unterorte einbeziehen“
+- `in_use`/gelagert und optionale gelöschte Datensätze
+- Desktop: Filter links, Ergebnisse rechts; compact: separate Vollbild-Filteransicht
+- Ergebnisse zeigen Type und relevante Properties, nicht nur UUIDs
+
+## 4.2 Bestand und Lagerorte – A
+
+- Compact: Breadcrumb, direkte Unterorte und Items; Tippen navigiert tiefer.
+- Desktop: Baum links, Inhalt rechts, Breadcrumb oben.
+- Umschalter „nur dieser Ort / inklusive Unterorte“.
+- Lagerortdetail: Name, Art, Pfad, Kinder, Items und Label.
+- Anlegen/Bearbeiten auf Desktop vollständig; compact auf Name, Parent und Art reduziert.
+- Lagerort verschieben: Quelle und Zielparent scannen/auswählen, beide Pfade bestätigen.
+- Root darf nicht verschoben/gelöscht werden; Zyklen verständlich abfangen.
+
+## 4.3 Gegenstandsdetail – A
+
+Immer sichtbar:
+
+- sprechender Titel aus Type und konfigurierten Anzeige-Properties
+- Item-ID/Code und Status
+- physischer und effektiver Lagerort; bei Relation den Parent-Weg erklären
+- wichtigste Properties mit Label und Einheit
+- Aktionen: Umlagern, Relation, Bearbeiten, Etikett
+
+Desktop-Tabs:
+
+- Übersicht
+- Properties (schemaerzeugtes Formular, Merge als Standard)
+- Relationen (Eltern/Kinder, Typ, Aktivstatus, Menge, Slot, Notizen)
+- Verlauf (Property-Historie)
+- Snapshots
+- Gefahrenzone
+
+## 4.4 Einzelne und mehrere Items umlagern – A/B
+
+Einzelnes Move ist A; der Serienmodus ist B:
+
+1. Zielort scannen/auswählen und Pfad bestätigen.
+2. Ziel sperren und dauerhaft anzeigen.
+3. Items nacheinander scannen.
+4. Jeden Scan einzeln serverseitig bestätigen.
+5. Quelle → Ziel je Item anzeigen.
+6. Ziel nur über „Ziel ändern“ wechseln.
+7. Fehler eines Items blockieren nicht automatisch die Sitzung.
+
+Bulk Move wird erst verwendet, wenn Fehler- und Transaktionsverhalten geprüft sind.
+
+## 4.5 Item erfassen/einlagern – A/B
+
+- Bekannte Item-ID: vorhandenes Item zum Ort verschieben.
+- Neues Item: Type wählen, schemaabhängige Pflichtfelder erfassen, Ort setzen, optional Label drucken.
+- Serienerfassung: Ort und gewählte Properties behalten, Enter-Auto-Advance, danach wieder korrekt fokussieren.
+- Item ohne physischen Ort für Relation/Benutzung zulassen, wenn das Fachmodell es erlaubt.
+- Unbekannten Fremdbarcode nicht automatisch als valides Item anlegen, solange Barcode-Aliase und Review-Status fehlen (C).
+- Desktop zeigt das vollständige dynamische Formular; compact Pflichtfelder plus „Weitere Angaben“.
+
+## 4.6 Relationen – A/B
+
+- Parent-Item öffnen/scannen, Child-Item scannen.
+- Relationstyp wählen; optional quantity, slot und notes.
+- Vor Bestätigung beide Items sprechend anzeigen.
+- Beim Lösen optional Zielort wählen und Backend-Standard erklären.
+- Compact: kurze Attach-/Detach-Flows.
+- Desktop: zusätzlich ändern, aktivieren/deaktivieren, löschen und gelöschte einblenden.
+
+## 4.7 Item-Type-Editor – A, Desktop
+
+Layout:
+
+- links Felder als sortierbare Liste
+- Mitte Eigenschaften des gewählten Feldes
+- rechts Live-Vorschau des späteren Item-Formulars
+- Type-Name, UI-Konfiguration und Label-Template in eigenen Bereichen/Tabs
+
+Pro Feld: Key, Label, Typ, required, Enum oder Min/Max/Regex, Einheit, Default, `track_history`, Hilfe, Gruppe und Reihenfolge.
+
+Regeln:
+
+- Keys nach Erstellung nicht still umbenennen; Migration/Kopieren als bewusste Aktion.
+- Schemaänderung gegen vorhandene Items validieren bzw. Backend-Ablehnung erklären.
+- JSON nur als synchronisierter „Erweitert“-Modus mit Validierung.
+- Löschen in Gefahrenzone mit Erklärung des Soft Delete.
+- Auf 7 Zoll nur Typen anzeigen/auswählen, nicht bearbeiten.
+
+## 4.8 Item bearbeiten, Verlauf und Snapshots – A
+
+- Status, Beschreibung und Properties in einem Bearbeitungsdialog.
+- Partial/Merge als Standard; Replace nur mit Differenzvorschau im Expertenmodus.
+- Verlauf-Link an Feldern mit `track_history`.
+- Verlauf zeigt Property, Wert, Zeitpunkt und Quelle; keine Bewegungsdaten erfinden.
+- Snapshot: kind, Zeitpunkt, Text/JSON und Metadaten; Inhalt erst beim Öffnen laden.
+
+## 4.9 Etikett drucken – A
+
+- Einstieg aus Itemdetail, Lagerortdetail oder Scanauflösung.
+- Template aus Item Type bzw. Location-Metadaten vorauswählen/validieren.
+- Drucker wählen; letzten Drucker nur vorauswählen, nicht ungeprüft absenden.
+- Vorschau lazy laden und auf dem Pi nicht im Hintergrund rendern.
+- Kopien nur anbieten, wenn API/PrintHub dies unterstützt.
+- Erfolg lautet „Druckauftrag gesendet/queued“, nie „physisch gedruckt“.
+
+## 4.10 Aufgaben – teilweise A, sonst C
+
+Mit aktueller API darstellbar:
+
+- Items ohne physischen Lagerort
+- lokale fehlgeschlagene Aktionen der aktuellen Sitzung
+- nicht erfüllte Client-Validierung
+
+Für einen dauerhaften Eingangskorb braucht es Backend-Support für unbekannte Codes, Inventurabweichungen, Retry-Status, Druckjobs sowie offen/erledigt/Audit. Mock 07 ist daher Zielbild, keine bereits vorhandene Funktion.
+
+## 4.11 Inventur – C
+
+In `main` fehlen UI und transaktionale API. Zielablauf:
+
+- Ort und Erwartungsmenge serverseitig einfrieren
+- Beobachtungen zunächst nur sammeln
+- erwartet, gefunden, unerwartet, doppelt und fehlend anzeigen
+- Korrekturen erst nach Abschlussprüfung buchen
+- Pause/Fortsetzen geräteübergreifend
+
+Vor UI-Implementierung sind Endpunkte, Idempotenz und Konfliktregeln zu definieren.
+
+## 4.12 Entnehmen/Zurücklegen – Fachentscheidung/C
+
+`main` kennt Status, Relationen sowie physische und effektive Lagerorte, aber keinen universellen „Bestand −1“-Vorgang. Vor Umsetzung klären:
+
+- Statusänderung, Relation zu Gerät/Person oder Entfernen des physischen Ortes?
+- Wo wird ein vorgesehener Stammplatz gespeichert?
+- Wie werden Mengenartikel behandelt?
+
+Bis dahin darf die Startkarte keine stillen Datenänderungen auslösen.
+
+---
+
+# 5. Scan-Sitzung, Undo und Fehler
+
+Gemeinsame Zustandsmaschine:
+
+```text
+KONTEXT WÄHLEN → BEREIT → PRÜFEN/SENDEN → BESTÄTIGT | HINWEIS | ABGELEHNT → BEREIT
+```
+
+Pro Event: lokale ID, Sequenz, Rohcode, Entität, Serverstatus, bestätigter Effekt, Zeitpunkt und Undo-Fähigkeit. Mutationen werden in Reihenfolge gesendet; die sichtbare Historie ist begrenzt.
+
+Undo ist mit der aktuellen API nicht generisch verfügbar:
+
+- nur anbieten, wenn Vorzustand bekannt und Rückoperation konfliktfrei prüfbar ist
+- vor Undo aktuellen Serverstand prüfen
+- nach parallelen Änderungen keinen blinden Client-Rollback
+- robustes Undo benötigt vorzugsweise einen serverseitigen Command-/Undo-Endpunkt (C)
+
+Netzwerkregeln:
+
+- Timeout bedeutet „Ergebnis unbekannt“, nicht automatisch „fehlgeschlagen“.
+- Ohne Idempotency-Key keine Mutation automatisch wiederholen.
+- offene Eingaben behalten, aber nach Reload nicht automatisch buchen.
+- API- und PrintHub-Status getrennt anzeigen.
+- Pollings stoppen, wenn die Seite unsichtbar ist.
+
+Rückmeldung: Ton plus Text/Symbol/Farbe; Erfolg erst nach Serverantwort; `prefers-reduced-motion` respektieren.
+
+---
+
+# 6. Responsive Design und Bewertung der Mocks
+
+Zielgrößen: 800×480, 1024×600, 1280×720 Touch, 1440×900 und 1920×1080 Desktop. Touchziele mindestens 48×48 px, primäre Kiosk-Aktionen 56–72 px; keine Hover-only-Funktionen; sichtbarer Fokus; Status nie nur über Farbe.
+
+Die visuelle Richtung der Mocks bleibt. Anpassungen:
+
+- Start: „Entnehmen“ erst nach Fachentscheidung aktivieren.
+- Scan-Erfolg: echte Item-Wirkung, keine unbelegte Menge.
+- Scan-Fehler: „Sitzung fortsetzen“ entfernen, wenn gleichzeitig „bereit“ angezeigt wird.
+- Itemdetail: schemaabhängige Properties, physischer/effektiver Ort und Relationen ergänzen.
+- Umlagern: passt gut zu `main` und erhält höchste Pi-Priorität.
+- Inventur/Aufgaben: als Backend-abhängige Zielbilder kennzeichnen.
+- Etikett: Preview optional/lazy; Status korrekt als gesendet/queued.
+- Neue Desktop-Mocks erstellen: Expertensuche, Item-Type-Editor, Itembearbeitung, Relationen, Historie/Snapshots und Lagerortverwaltung.
+
+---
+
+# 7. Technische Architektur und Pi-Budget
+
+- React/TypeScript/Vite beibehalten.
+- Admin-Editor, Snapshot-Viewer und Druckpreview per dynamischem Import aus dem Kiosk-Startbundle halten.
+- TanStack Query mit begrenzten Caches und gezielter Invalidierung.
+- lokaler Workflow-State, kein großer globaler Store.
+- Listen serverseitig paginieren; virtualisieren erst bei messbarem Bedarf.
+- Systemschrift und lokale SVGs; keine Webfonts/Icon-Fonts.
+- keine schweren Grid-, Chart-, Drag-and-drop- oder Animationsbibliotheken im Kiosk-Pfad.
+- zentrale Entity-Auflösung und ein gemeinsamer Schema-Interpreter für Create, Edit, Search und Detail.
+- Feature-Flags vor Navigation, Route und Datenabfrage konsistent prüfen.
+
+Messziele auf dem Referenz-Pi:
+
+- initialer komprimierter JS-Transfer möglichst unter 200 kB; harte Grenze nach erstem Benchmark
+- interaktiv nach Warmstart unter 2 s
+- Scan → sichtbarer Pending-Zustand unter 100 ms
+- kein stetig wachsender Query-Cache oder Session-Verlauf
+- stabiler Browserprozess nach 30 Minuten Serien-Scan/Navigation
+- Preview-, Snapshot- und große Suchdaten nach Routenwechsel freigeben
+
+RAM immer als Gesamtbudget aus OS + Browser + UI auf dem echten Gerät messen.
+
+---
+
+# 8. Benötigte Backend-Erweiterungen
+
+1. Barcode-Aliase für EAN/QR statt ausschließlich UUIDs.
+2. Type-seitig definierte Anzeige-Properties für Titel/Untertitel.
+3. idempotente Scan-Commands mit Event-ID, Sequenz, Ergebnis und optional Undo.
+4. verbindliches Mengenmodell, falls Mengenartikel gebraucht werden.
+5. persistentes Task-/Review-Modell.
+6. Inventur-Sessions, Beobachtungen, Abschluss und Korrekturen.
+7. Aktivitäts-/Bewegungsverlauf getrennt von Property-Historie.
+8. Print Jobs mit Job-ID und Status.
+9. Volltextsuche über Anzeige-Properties, falls die Filter-API nicht genügt.
+
+Die UI bleibt erweiterbar, setzt diese Endpunkte aber nicht vorzeitig voraus.
+
+---
+
+# 9. Umsetzungsplan
+
+- [ ] **1. Fachvertrag festziehen:** Mengenartikel, Entnehmen/Zurücklegen, Barcode-Aliase, Anzeige-Properties und Undo entscheiden; A/B/C-Matrix abnehmen.
+- [ ] **2. Designsystem und responsive Shell bauen:** Tokens, Compact-Navigation, Desktop-Sidebar sowie Fokus-, Lade-, Leer-, Fehler- und Offlinezustände.
+- [ ] **3. Gemeinsame Grundlagen bauen:** typed API layer, Entity-Auflösung, Schema-Interpreter, Feature-Flags, Audio und Scanner-Controller.
+- [ ] **4. Lesen und Finden liefern:** Start, ID-Auflösung, Bestand, Lagerort-/Itemdetail und typisierte Expertensuche.
+- [ ] **5. Pi-Kernworkflows liefern:** Item/Lagerort einzeln und seriell verschieben, Ziel sperren, Resultate und Fehlerweiterlauf.
+- [ ] **6. Erfassen und Relationen liefern:** dynamische Erfassung mit Prefill/Auto-Advance/Label sowie Attach/Detach und Desktop-Editor.
+- [ ] **7. Desktop-Verwaltung liefern:** Item-Type-Builder, Item-/Location-Edit, Historie, Snapshots, Missing Location und Gefahrenzonen.
+- [ ] **8. Druck und C-Workflows anbinden:** korrekte Jobtexte/lazy Preview; Aufgaben, Inventur, Alias-Codes und robustes Undo erst nach Backend-Vertrag.
+- [ ] **9. Validieren und ausrollen:** automatisierte Tests, Visual Regression, echte Scanner-/Touch-Tests, Pi-Soak-Test und Feature-Flag-Rollout.
+
+---
+
+# 10. Abnahmekriterien
+
+## Funktional
+
+- Jeder `main`-Use-Case ist erreichbar oder bewusst als späterer Scope dokumentiert.
+- Scan außerhalb eines Änderungsmodus verändert keine Daten.
+- Item- und Location-Codes werden unterschieden.
+- Suche erzeugt typisierte Eingaben aus dem Type-Schema.
+- Create/Edit/Search/Detail interpretieren dasselbe Schema konsistent.
+- Serien-Umlagerung hält das Ziel gesperrt, bis es bewusst geändert wird.
+- Relationen zeigen Parent, Child, Typ, Aktivstatus und effektiven Ort.
+- Druckmeldungen unterscheiden gesendet/queued von gedruckt.
+- Fehlende Backend-Funktionen werden nicht als erfolgreich simuliert.
+
+## 7 Zoll / Pi
+
+- 800×480 ohne horizontales Scrollen in täglichen Workflows.
+- Fünf Items nacheinander umlagern, ohne zwischen Scans das Display zu berühren.
+- Scannerbetrieb öffnet keine Bildschirmtastatur.
+- eindeutige Rückmeldung nach jeder Serverantwort.
+- 30 Minuten Scanbetrieb ohne stetig steigenden RAM oder Verzögerung.
+- Netzwerkfehler verursachen keine still verlorenen oder doppelt gesendeten Mutationen.
+
+## Desktop
+
+- Expertensuche, Type-Editor, Properties, Relationen, Historie, Snapshots und Lagerortverwaltung nutzen den Platz sinnvoll.
+- Item Type lässt sich ohne direkte JSON-Bearbeitung vollständig anlegen.
+- vollständige Tastaturbedienung und sichtbare Fokusführung.
+- destruktive Aktionen getrennt von täglichen Aktionen mit konkreter Bestätigung.
+
+## Tests
+
+- Unit: Schema-Interpreter, Filterwert-Konvertierung, Scanner-Puffer, Zustandsmaschine
+- Component: dynamische Felder, Type-Editor, Lade-/Leer-/Fehlerzustände
+- Integration: Search, Move, Relations, Create/Edit und Print gegen OpenAPI-kompatible API
+- E2E: globale Auflösung, Serien-Umlagerung, Relation attach/detach, Label senden
+- Visual Regression: 800×480, 1024×600, 1440×900, 1920×1080
+- Bundle-/Lighthouse-Analyse plus RAM- und 30-Minuten-Soak-Test auf dem echten Pi
+
+## Zusammenfassung
+
+Die Mocks sind eine gute Grundlage für die täglichen 7-Zoll-Workflows, bilden aber nur einen Teil von Thingdex ab. Ergänzt werden insbesondere schemaabhängige Suche und Erfassung, Item-Type-Verwaltung, Relationen, physischer/effektiver Ort, Property-Historie, Snapshots, Soft Delete und das Verschieben ganzer Lagerorte. Scanner-Aktionen bleiben compact und leichtgewichtig; komplexe Pflegewerkzeuge erhalten eine Desktop-Darstellung. Inventur, dauerhafte Aufgaben, unbekannte Barcodes, universelles Undo und Mengenbestände bleiben ausdrücklich Backend-abhängige Zielbilder.

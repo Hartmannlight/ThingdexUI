@@ -51,6 +51,7 @@ const Shell = () => {
         {featureFlags.labelPrinting && (
           <div className="nav-group">
             <div className="nav-group__title">Labels</div>
+            <NavItem to="/labels/automation">Automatic Labels</NavItem>
             <NavItem to="/labels/reprint">Reprint Label</NavItem>
           </div>
         )}

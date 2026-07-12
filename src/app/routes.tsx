@@ -21,6 +21,7 @@ import AttachItemPage from "@/features/relations/AttachItemPage";
 import DetachRelationPage from "@/features/relations/DetachRelationPage";
 import UpdateRelationPage from "@/features/relations/UpdateRelationPage";
 import LabelReprintPage from "@/features/labels/LabelReprintPage";
+import LabelAutomationPage from "@/features/labels/LabelAutomationPage";
 import CreateHubPage from "@/features/hubs/CreateHubPage";
 import EditHubPage from "@/features/hubs/EditHubPage";
 import DeleteItemPage from "@/features/admin/DeleteItemPage";
@@ -182,6 +183,12 @@ const labelReprintRoute = createRoute({
   component: LabelReprintPage
 });
 
+const labelAutomationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/labels/automation",
+  component: LabelAutomationPage
+});
+
 const createHubRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/create",
@@ -220,6 +227,7 @@ const routeTree = rootRoute.addChildren([
   deleteRelationRoute,
   searchRoute,
   labelReprintRoute,
+  labelAutomationRoute,
   createHubRoute,
   editHubRoute
 ]);

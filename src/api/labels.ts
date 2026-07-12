@@ -1,8 +1,7 @@
-import type { TemplateDetailResponse, TemplateListItem } from "@printhub/sdk";
+import { getOptionalPrinthub } from "@/api/optionalPrinthub";
+import { getRuntimeConfig } from "@/config/runtime";
 
-import { getLabelServiceSdk } from "@/api/client";
-
-export type LabelTemplateSummary = Pick<TemplateListItem, "id" | "name">;
+export type LabelTemplateSummary = { id: string; name?: string | null };
 
 export type LabelTemplateVariable = {
   name: string;
@@ -31,12 +30,12 @@ export const isValidLocationTemplate = (template?: LabelTemplateDetail | null) =
 };
 
 export const listLabelTemplates = async () => {
-  const items = await getLabelServiceSdk().templates.list();
+  const items = await getOptionalPrinthub(getRuntimeConfig().labelServiceBaseUrl).listTemplates();
   return items.map((item) => ({ id: item.id, name: item.name ?? null }));
 };
 
 export const getLabelTemplate = async (templateId: string): Promise<LabelTemplateDetail> => {
-  const detail = await getLabelServiceSdk().templates.get(templateId);
+  const detail = await getOptionalPrinthub(getRuntimeConfig().labelServiceBaseUrl).getTemplate(templateId);
   const variables = Array.isArray(detail.variables)
     ? detail.variables
         .map((variable) => {

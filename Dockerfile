@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /workspace
 
@@ -7,15 +7,15 @@ COPY printhub-sdk ./printhub-sdk
 COPY ThingdexUI ./ThingdexUI
 
 WORKDIR /workspace/thingdex-sdk
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 WORKDIR /workspace/printhub-sdk
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 WORKDIR /workspace/ThingdexUI
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 FROM nginx:1.25-alpine

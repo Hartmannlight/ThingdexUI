@@ -1,7 +1,8 @@
 import { getThingdexSdk } from "@/api/client";
-import type { ItemOut, LocationCreate, LocationOut, LocationPathItem, LocationTreeNode, LocationUpdate } from "@/api/types";
+import type { ItemOut, LocationCreate, LocationCreateResponse, LocationOut, LocationPathItem, LocationTreeNode, LocationUpdate } from "@/api/types";
 
-export const createLocation = (payload: LocationCreate) => getThingdexSdk().locations.create(payload) as Promise<LocationOut>;
+export const createLocation = (payload: LocationCreate) =>
+  getThingdexSdk().locations.createWithSideEffects(payload) as Promise<LocationCreateResponse>;
 
 export const getLocation = (locationId: string) => getThingdexSdk().locations.get(locationId) as Promise<LocationOut>;
 

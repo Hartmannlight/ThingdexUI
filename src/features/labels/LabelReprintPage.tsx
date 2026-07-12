@@ -97,14 +97,15 @@ const LabelReprintPage = () => {
     setSubmitting(true);
     setStatus(null);
     try {
-      await printLabel({
+      const result = await printLabel({
         printer_id: printerId.trim(),
         item_id: targetKind === "item" ? targetId.trim() : null,
         location_id: targetKind === "location" ? targetId.trim() : null,
         template_id: templateId.trim() || null
       });
-      success("Print queued", targetId.trim());
-      setStatus({ kind: "success", title: "Print queued", message: targetId.trim() });
+      const message = `${result.bytes_sent} bytes sent to ${result.printer_id}`;
+      success("Label sent", message);
+      setStatus({ kind: "success", title: "Label sent", message });
       setTargetId("");
       inputRef.current?.focus();
     } catch (err) {

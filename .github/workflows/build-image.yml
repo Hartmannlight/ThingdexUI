@@ -13,8 +13,24 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout ThingdexUI
         uses: actions/checkout@v4
+        with:
+          path: workspace/ThingdexUI
+
+      - name: Checkout matching Thingdex SDK release
+        uses: actions/checkout@v4
+        with:
+          repository: Hartmannlight/thingdex-sdk
+          ref: ${{ github.ref_name }}
+          path: workspace/thingdex-sdk
+
+      - name: Checkout matching PrintHub SDK release
+        uses: actions/checkout@v4
+        with:
+          repository: Hartmannlight/printhub-sdk
+          ref: ${{ github.ref_name }}
+          path: workspace/printhub-sdk
 
       - name: Set image name
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/thingdexui" >> "$GITHUB_ENV"
@@ -32,7 +48,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: Dockerfile
+          context: workspace
+          file: workspace/ThingdexUI/Dockerfile
           push: true
           tags: ${{ env.IMAGE_NAME }}:${{ github.ref_name }}

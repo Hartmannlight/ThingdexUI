@@ -18,7 +18,7 @@ import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
 
 const CreateItemsPage = () => {
   const { defaults, featureFlags } = getRuntimeConfig();
-  const { success, error } = useToasts();
+  const { success, warning, error } = useToasts();
   const rootLocationId = useBootstrapRootLocation();
   const [includeDeletedTypes, setIncludeDeletedTypes] = useState(false);
 
@@ -240,7 +240,7 @@ const CreateItemsPage = () => {
 
     setSubmitting(true);
     try {
-      await createItem({
+      const response = await createItem({
         location_id: hasPhysicalLocation ? effectiveLocation : null,
         status: effectiveStatus || null,
         description: effectiveDescription || null,
@@ -248,7 +248,13 @@ const CreateItemsPage = () => {
         props: propsPayload,
         label_print: labelPrintEnabled ? { printer_id: printerId.trim() } : null
       });
-      success("Item created", typeId);
+      success("Item created", response.data.id);
+      const printResult = response.side_effects?.label_print;
+      if (printResult?.requested && !printResult.success) {
+        warning("Item saved, label not printed", printResult.error ?? "Unknown print error");
+      } else if (printResult?.result) {
+        success("Label sent", `${printResult.result.bytes_sent} bytes to ${printResult.result.printer_id}`);
+      }
 
       const nextPrefill: Record<string, string | boolean> = {
         location_id: effectiveLocation,
@@ -441,15 +447,17 @@ const CreateItemsPage = () => {
               </label>
             </div>
             {featureFlags.labelPrinting && (
-              <div className="form-stack">
+              <details>
+                <summary>Advanced: override automatic label printing</summary>
+                <div className="form-stack">
                 <label className="toggle">
                   <input
                     type="checkbox"
                     checked={labelPrintEnabled}
                     onChange={(event) => setLabelPrintEnabled(event.target.checked)}
                   />
-                  <span>Print label</span>
-                  <HelpIcon text="Requests a label print immediately after the item is created." />
+                  <span>Force a one-time print</span>
+                  <HelpIcon text="Normally the automatic label rule for this item type handles printing. Use this only as a one-time override." />
                 </label>
                 {labelPrintEnabled && (
                   <>
@@ -473,7 +481,8 @@ const CreateItemsPage = () => {
                     )}
                   </>
                 )}
-              </div>
+                </div>
+              </details>
             )}
           </div>
         </Card>

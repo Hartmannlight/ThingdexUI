@@ -15,7 +15,7 @@ import { getRuntimeConfig } from "@/config/runtime";
 import { HelpIcon } from "@/components/HelpIcon";
 
 const LocationsPage = () => {
-  const { success: toastSuccess, error: toastError } = useToasts();
+  const { success: toastSuccess, warning: toastWarning, error: toastError } = useToasts();
   const { defaults, featureFlags } = getRuntimeConfig();
   const rootLocationId = useBootstrapRootLocation();
   const [parentId, setParentId] = useState("");
@@ -163,7 +163,13 @@ const LocationsPage = () => {
             }
           : null
       });
-      toastSuccess("Location created", response.name);
+      toastSuccess("Location created", response.data.name);
+      const printResult = response.side_effects?.label_print;
+      if (printResult?.requested && !printResult.success) {
+        toastWarning("Location saved, label not printed", printResult.error ?? "Unknown print error");
+      } else if (printResult?.result) {
+        toastSuccess("Label sent", `${printResult.result.bytes_sent} bytes to ${printResult.result.printer_id}`);
+      }
       setName("");
       setLabelPrintEnabled(false);
       setPrinterId(defaults.defaultPrinterId);
@@ -206,7 +212,9 @@ const LocationsPage = () => {
               help="Enter the name that will appear in navigation and breadcrumbs."
             />
             {featureFlags.labelPrinting && (
-              <>
+              <details>
+                <summary>Advanced: override automatic label printing</summary>
+                <div className="form-stack">
                 <Select
                   value={labelTemplateId}
                   onChange={(event) => setLabelTemplateId(event.target.value)}
@@ -260,8 +268,8 @@ const LocationsPage = () => {
                     checked={labelPrintEnabled}
                     onChange={(event) => setLabelPrintEnabled(event.target.checked)}
                   />
-                  <span>Print label</span>
-                  <HelpIcon text="Enable this to send a label print job right after the location is created." />
+                  <span>Force a one-time print</span>
+                  <HelpIcon text="Normally the automatic rule for this location kind handles printing. Use this only as a one-time override." />
                 </label>
                 {labelPrintEnabled && (
                   <>
@@ -282,7 +290,8 @@ const LocationsPage = () => {
                     )}
                   </>
                 )}
-              </>
+                </div>
+              </details>
             )}
             <Button size="lg" onClick={create} disabled={!canCreate}>
               Create

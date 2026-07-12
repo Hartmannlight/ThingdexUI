@@ -1,7 +1,8 @@
 ﻿services:
   thingdex-ui:
     build:
-      context: .
+      context: ..
+      dockerfile: ThingdexUI/Dockerfile
     ports:
       - "${THINGDEX_WEB_PORT:-5173}:80"
     environment:
