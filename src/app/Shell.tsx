@@ -1,155 +1,74 @@
-import { Link, Outlet } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { getRuntimeConfig } from "@/config/runtime";
 import { Toasts } from "@/components/Toasts";
+import { Icon, type IconName } from "@/components/Icon";
 import { useBootstrapRootLocation } from "@/hooks/useBootstrapRootLocation";
+
+const titles: Array<[string, string]> = [
+  ["/move", "Umlagern"], ["/search", "Suche"], ["/inventory", "Bestand"], ["/scan", "Scannen"],
+  ["/tasks", "Aufgaben"], ["/create-items", "Items erfassen"], ["/item-types", "Item Types"],
+  ["/locations", "Lagerorte"], ["/relations", "Relationen"], ["/labels", "Etiketten"]
+];
+
+const NavIcon = ({ icon, label }: { icon: IconName; label: string }) => <><Icon name={icon} /><span>{label}</span></>;
+const activeProps = { className: "side-nav__link is-active" };
+const bottomActiveProps = { className: "bottom-nav__link is-active" };
 
 const Shell = () => {
   const { featureFlags } = getRuntimeConfig();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [menuOpen, setMenuOpen] = useState(false);
   useBootstrapRootLocation();
+  useEffect(() => setMenuOpen(false), [pathname]);
+  const workflow = pathname === "/move";
+  const pageTitle = titles.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "Hausinventar";
 
-  const navClass = ({ isActive }: { isActive: boolean }) => (isActive ? "nav__link is-active" : "nav__link");
+  return <div className={`app-shell${workflow ? " app-shell--workflow" : ""}`}>
+    {!workflow && <header className="topbar">
+      <button className="icon-button topbar__menu" onClick={() => setMenuOpen((value) => !value)} aria-label="Navigation öffnen"><Icon name="menu" /></button>
+      <Link to="/" className="brand"><span className="brand__mark"><Icon name="box" /></span><strong>Thingdex</strong></Link>
+      <span className="topbar__context">{pageTitle}</span>
+      <div className="topbar__status"><span className="connection-pill"><i /> UI bereit</span><button className="icon-button" aria-label="Audiofeedback"><Icon name="volume" /></button></div>
+    </header>}
 
-  return (
-    <div className="app">
-      <aside className="app__sidebar">
-        {featureFlags.inventory && (
-          <div className="nav-group">
-            <div className="nav-group__title">Overview</div>
-            <Link to="/" className={navClass}>
-              Inventory Overview
-            </Link>
-          </div>
-        )}
-
-        <div className="nav-group">
-          <div className="nav-group__title">Daily Ops</div>
-          {featureFlags.createItems && (
-            <Link to="/create-items" className={navClass}>
-              Create Items
-            </Link>
-          )}
-          {featureFlags.moveWorkflow && (
-            <Link to="/move" className={navClass}>
-              Move Item
-            </Link>
-          )}
-          {featureFlags.search && (
-            <Link to="/search" className={navClass}>
-              Search Items
-            </Link>
-          )}
+    {!workflow && <aside className={`sidebar${menuOpen ? " is-open" : ""}`}>
+      <div className="sidebar__scroll"><nav className="side-nav" aria-label="Hauptnavigation">
+        <div className="side-nav__group"><span className="side-nav__title">Übersicht</span>
+          <Link to="/" activeOptions={{ exact: true }} className="side-nav__link" activeProps={activeProps}><NavIcon icon="home" label="Start" /></Link>
+          <Link to="/tasks" className="side-nav__link" activeProps={activeProps}><NavIcon icon="clipboard" label="Aufgaben" /></Link>
         </div>
+        <div className="side-nav__group"><span className="side-nav__title">Bestand</span>
+          {featureFlags.inventory && <Link to="/inventory" className="side-nav__link" activeProps={activeProps}><NavIcon icon="archive" label="Bestand" /></Link>}
+          {featureFlags.search && <Link to="/search" className="side-nav__link" activeProps={activeProps}><NavIcon icon="search" label="Suche" /></Link>}
+          {featureFlags.inventory && <Link to="/locations" className="side-nav__link" activeProps={activeProps}><NavIcon icon="map" label="Lagerorte" /></Link>}
+        </div>
+        <div className="side-nav__group"><span className="side-nav__title">Vorgänge</span>
+          <Link to="/scan" className="side-nav__link" activeProps={activeProps}><NavIcon icon="scan" label="Scannen" /></Link>
+          {featureFlags.createItems && <Link to="/create-items" className="side-nav__link" activeProps={activeProps}><NavIcon icon="plus" label="Items erfassen" /></Link>}
+          {featureFlags.moveWorkflow && <Link to="/move" className="side-nav__link" activeProps={activeProps}><NavIcon icon="move" label="Umlagern" /></Link>}
+          {featureFlags.labelPrinting && <Link to="/labels/reprint" className="side-nav__link" activeProps={activeProps}><NavIcon icon="printer" label="Etiketten" /></Link>}
+        </div>
+        <div className="side-nav__group"><span className="side-nav__title">Verwaltung</span>
+          {featureFlags.itemTypes && <Link to="/item-types" className="side-nav__link" activeProps={activeProps}><NavIcon icon="types" label="Item Types" /></Link>}
+          {featureFlags.snapshots && <Link to="/items/snapshots/list" className="side-nav__link" activeProps={activeProps}><NavIcon icon="layers" label="Snapshots" /></Link>}
+          {featureFlags.inventory && <Link to="/edit" className="side-nav__link" activeProps={activeProps}><NavIcon icon="cog" label="Werkzeuge" /></Link>}
+        </div>
+      </nav></div>
+      <div className="sidebar__footer"><span className="connection-dot" /><span><strong>UI bereit</strong><small>Dienste werden bei Bedarf geprüft</small></span></div>
+    </aside>}
+    {menuOpen && <button className="sidebar-scrim" onClick={() => setMenuOpen(false)} aria-label="Navigation schließen" />}
 
-        {featureFlags.inventory && (
-          <div className="nav-group">
-            <div className="nav-group__title">Locations</div>
-            <Link to="/locations" className={navClass}>
-              Create + Browse
-            </Link>
-            <Link to="/locations/move" className={navClass}>
-              Move Location
-            </Link>
-          </div>
-        )}
+    <main className="app-main"><Outlet /></main>
 
-        {featureFlags.inventory && (
-          <div className="nav-group">
-            <div className="nav-group__title">Relations</div>
-            <Link to="/relations/attach" className={navClass}>
-              Attach Item
-            </Link>
-            <Link to="/relations/detach" className={navClass}>
-              Detach Relation
-            </Link>
-            <Link to="/relations/update" className={navClass}>
-              Update Relation
-            </Link>
-          </div>
-        )}
-
-        {featureFlags.labelPrinting && (
-          <div className="nav-group">
-            <div className="nav-group__title">Labels</div>
-            <Link to="/labels/reprint" className={navClass}>
-              Reprint Label
-            </Link>
-          </div>
-        )}
-
-        {(featureFlags.itemTypes || featureFlags.inventory || featureFlags.snapshots) && (
-          <div className="nav-group">
-            <div className="nav-group__title">Tools</div>
-            {featureFlags.inventory && (
-              <Link to="/items/update" className={navClass}>
-                Update Item
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/props" className={navClass}>
-                Update Item Props
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/history" className={navClass}>
-                Item History
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/missing-location" className={navClass}>
-                Missing Locations
-              </Link>
-            )}
-            {featureFlags.snapshots && (
-              <Link to="/items/snapshots/list" className={navClass}>
-                Item Snapshots
-              </Link>
-            )}
-            {featureFlags.snapshots && (
-              <Link to="/items/snapshots" className={navClass}>
-                Create Snapshot
-              </Link>
-            )}
-            {featureFlags.itemTypes && (
-              <Link to="/item-types/create" className={navClass}>
-                Create Item Type
-              </Link>
-            )}
-            {featureFlags.itemTypes && (
-              <Link to="/item-types" className={navClass}>
-                Item Type Editor
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/items/delete" className={navClass}>
-                Delete Item
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/locations/delete" className={navClass}>
-                Delete Location
-              </Link>
-            )}
-            {featureFlags.inventory && (
-              <Link to="/relations/delete" className={navClass}>
-                Delete Relation
-              </Link>
-            )}
-            {featureFlags.itemTypes && (
-              <Link to="/item-types/delete" className={navClass}>
-                Delete Item Type
-              </Link>
-            )}
-          </div>
-        )}
-      </aside>
-
-      <main className="app__main">
-        <Outlet />
-      </main>
-
-      <Toasts />
-    </div>
-  );
+    {!workflow && <nav className="bottom-nav" aria-label="Mobile Navigation">
+      <Link to="/" activeOptions={{ exact: true }} className="bottom-nav__link" activeProps={bottomActiveProps}><NavIcon icon="home" label="Start" /></Link>
+      <Link to="/inventory" className="bottom-nav__link" activeProps={bottomActiveProps}><NavIcon icon="archive" label="Bestand" /></Link>
+      <Link to="/scan" className="bottom-nav__link" activeProps={bottomActiveProps}><NavIcon icon="scan" label="Scannen" /></Link>
+      <Link to="/tasks" className="bottom-nav__link" activeProps={bottomActiveProps}><NavIcon icon="clipboard" label="Aufgaben" /></Link>
+    </nav>}
+    <Toasts />
+  </div>;
 };
 
 export default Shell;

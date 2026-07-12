@@ -34,24 +34,78 @@ Vite will proxy `/api/*` to `http://127.0.0.1:8000`.
 
 Use a `.env` file (see `.env.example`) or edit `public/config.js` for defaults.
 
-## Docker
+## Complete Docker demo stack
 
-Build and run the UI:
+The repository-level `docker-compose.yml` starts the complete local test system:
+
+- PostgreSQL 15
+- Thingdex API with automatic Alembic migrations
+- PrintHub/ZPLGrid
+- ZPL-II Printer Emulator
+- idempotent demo-data seed job
+- the production ThingdexUI image behind nginx
+
+The Compose file expects the sibling repositories `Thingdex`, `PrintHub-ZPL-ll`,
+and `ZPL-II-Printer-Emulator` next to this checkout, matching the workspace layout.
+
+Start everything with one command:
+
+```shell
+docker compose up --build -d
 ```
-docker compose up --build
+
+The UI waits for the API, PrintHub, and seed job before it becomes healthy.
+Open the services after startup:
+
+| Service | URL |
+| --- | --- |
+| ThingdexUI | http://localhost:5173 |
+| Thingdex API docs | http://localhost:8000/docs |
+| PrintHub API docs | http://localhost:8001/docs |
+| Virtual ZPL printer | http://localhost:9191 |
+| PostgreSQL | `localhost:5433` |
+
+Inspect the generated scan IDs and seed summary:
+
+```shell
+docker compose logs seed
 ```
 
-Configuration lives in `docker-compose.yml` under `environment`:
-- `THINGDEX_API_BASE_URL`
-- `THINGDEX_API_UPSTREAM`
-- `THINGDEX_LABEL_SERVICE_BASE_URL`
-- `THINGDEX_PRINTER_HUB_BASE_URL`
-- `THINGDEX_ROOT_LOCATION_ID`
-- `THINGDEX_DEFAULT_INCLUDE_DESCENDANTS`
-- `THINGDEX_FEATURE_*` flags
-- `THINGDEX_AUDIO_*`
+The seed job is idempotent. It creates nested rooms, shelves and boxes, five
+schema-driven item types, representative items, relations, property history,
+a snapshot, two label templates, and one sample label sent to the emulator.
 
-The container generates `/config.js` at runtime from those variables.
+Re-run only the seed job:
+
+```shell
+docker compose run --rm seed
+```
+
+Stop the stack while retaining data:
+
+```shell
+docker compose down
+```
+
+Reset PostgreSQL and PrintHub templates, then recreate the complete demo:
+
+```shell
+docker compose down -v
+docker compose up --build -d
+```
+
+Ports and the development-only database password can be overridden with:
+
+- `THINGDEX_WEB_PORT` (default `5173`)
+- `THINGDEX_API_PORT` (default `8000`)
+- `PRINTHUB_PORT` (default `8001`)
+- `ZPL_EMULATOR_WEB_PORT` (default `9191`)
+- `ZPL_EMULATOR_TCP_PORT` (default `9102`)
+- `THINGDEX_POSTGRES_PORT` (default `5433`)
+- `THINGDEX_DB_PASSWORD` (default `thingdex-dev-only`)
+
+The UI container generates `/config.js` and the nginx proxy configuration from
+runtime environment variables; no browser-facing API hostname is baked into the image.
 
 ## Root bootstrap
 

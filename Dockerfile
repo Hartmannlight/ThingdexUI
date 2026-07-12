@@ -17,7 +17,8 @@ COPY docker/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY public/config.template.js /usr/share/nginx/html/config.template.js
 COPY docker/entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh \
+    && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

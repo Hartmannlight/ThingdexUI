@@ -1,11 +1,15 @@
 ﻿import { apiRequest } from "@/api/client";
 import type { ItemOut, LocationCreate, LocationOut, LocationPathItem, LocationTreeNode, LocationUpdate } from "@/api/types";
 
-export const createLocation = (payload: LocationCreate) =>
-  apiRequest<LocationOut>("/v1/locations", {
+type CreateLocationResponse = LocationOut | { data: LocationOut };
+
+export const createLocation = async (payload: LocationCreate) => {
+  const response = await apiRequest<CreateLocationResponse>("/v1/locations", {
     method: "POST",
     body: JSON.stringify(payload)
   });
+  return "data" in response ? response.data : response;
+};
 
 export const getLocation = (locationId: string) =>
   apiRequest<LocationOut>(`/v1/locations/${locationId}`);

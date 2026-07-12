@@ -37,7 +37,7 @@ export const ToastsProvider = ({ children }: { children: ReactNode }) => {
     (toast: Omit<Toast, "id">) => {
       const id = createId();
       const next = { ...toast, id };
-      setToasts((current) => [...current, next]);
+      setToasts((current) => current.some((item) => item.kind === next.kind && item.title === next.title && item.message === next.message) ? current : [...current, next]);
       if (toast.kind === "success") play("success");
       if (toast.kind === "warning") play("warning");
       if (toast.kind === "error") play("error");

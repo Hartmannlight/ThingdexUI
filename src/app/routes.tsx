@@ -27,15 +27,36 @@ import DeleteItemPage from "@/features/admin/DeleteItemPage";
 import DeleteLocationPage from "@/features/admin/DeleteLocationPage";
 import DeleteRelationPage from "@/features/admin/DeleteRelationPage";
 import DeleteItemTypePage from "@/features/admin/DeleteItemTypePage";
+import HomePage from "@/features/hubs/HomePage";
+import ScanHubPage from "@/features/hubs/ScanHubPage";
+import TasksPage from "@/features/hubs/TasksPage";
 
 const rootRoute = createRootRoute({
   component: Shell
 });
 
-const inventoryRoute = createRoute({
+const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
+  component: HomePage
+});
+
+const inventoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory",
   component: InventoryPage
+});
+
+const scanRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/scan",
+  component: ScanHubPage
+});
+
+const tasksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tasks",
+  component: TasksPage
 });
 
 const itemDetailRoute = createRoute({
@@ -195,7 +216,10 @@ const editHubRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  homeRoute,
   inventoryRoute,
+  scanRoute,
+  tasksRoute,
   itemDetailRoute,
   itemTypesRoute,
   createItemTypeRoute,

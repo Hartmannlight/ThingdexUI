@@ -18,7 +18,7 @@ export const useBootstrapRootLocation = () => {
           setRootId(location.id);
         })
         .catch((error) => {
-          warning("Root bootstrap failed", parseErrorMessage(error));
+          warning("API nicht erreichbar", parseErrorMessage(error));
         });
     }
   }, [rootId, warning]);

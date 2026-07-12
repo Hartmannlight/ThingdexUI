@@ -27,11 +27,15 @@ export const listItems = (filters?: {
 
 export const getItem = (itemId: string) => apiRequest<ItemDetailOut>(`/v1/items/${itemId}`);
 
-export const createItem = (payload: ItemCreate) =>
-  apiRequest<ItemOut>("/v1/items", {
+type CreateItemResponse = ItemOut | { data: ItemOut };
+
+export const createItem = async (payload: ItemCreate) => {
+  const response = await apiRequest<CreateItemResponse>("/v1/items", {
     method: "POST",
     body: JSON.stringify(payload)
   });
+  return "data" in response ? response.data : response;
+};
 
 export const deleteItem = (itemId: string) =>
   apiRequest<void>(`/v1/items/${itemId}`, {

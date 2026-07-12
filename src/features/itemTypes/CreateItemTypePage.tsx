@@ -1,6 +1,7 @@
 import { StatusBanner } from "@/components/StatusBanner";
 import { ItemTypeBuilder } from "@/features/itemTypes/ItemTypeBuilder";
 import { getRuntimeConfig } from "@/config/runtime";
+import { PageHeader } from "@/components/PageHeader";
 
 const CreateItemTypePage = () => {
   const { featureFlags } = getRuntimeConfig();
@@ -15,7 +16,8 @@ const CreateItemTypePage = () => {
 
   return (
     <div className="page">
-      <div className="muted">Define the schema and label template for a new item type.</div>
+      <PageHeader title="Item Type anlegen" eyebrow="Desktop-Verwaltung" />
+      <div className="info-panel"><div><strong>Schema-gesteuertes Formular</strong><p>Felder, Validierung, Verlauf und Label-Template werden hier gemeinsam definiert. Die JSON-Ansicht bleibt als Expertenmodus verfügbar.</p></div></div>
       <ItemTypeBuilder onCreated={() => undefined} />
     </div>
   );
